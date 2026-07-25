@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../book_analysis/book_analysis_screen.dart';
 import '../character/character_sheet.dart';
 import '../settings/settings_screen.dart';
+import '../../core/database/database.dart';
 import '../../core/database/providers.dart';
 import '../../core/services/txt_export_service.dart';
 import '../../shared/widgets/status_bar.dart';
@@ -36,12 +37,31 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> {
     ref.read(selectedBookProvider.notifier).state = widget.bookId;
     ref.read(selectedChapterProvider.notifier).state = null;
     _loadBookTitle();
+    _selectLatestChapter();
   }
 
   Future<void> _loadBookTitle() async {
     final bookDao = ref.read(bookDaoProvider);
     final book = await bookDao.getBookById(widget.bookId);
     if (mounted && book != null) setState(() => _bookTitle = book.title);
+  }
+
+  Future<void> _selectLatestChapter() async {
+    final volumeDao = ref.read(volumeDaoProvider);
+    final chapterDao = ref.read(chapterDaoProvider);
+    final volumes = await volumeDao.getVolumesByBook(widget.bookId);
+    Chapter? latest;
+    for (final vol in volumes) {
+      final chapters = await chapterDao.getChaptersByVolume(vol.id);
+      for (final ch in chapters) {
+        if (latest == null || ch.sortOrder > latest.sortOrder) {
+          latest = ch;
+        }
+      }
+    }
+    if (latest != null && mounted) {
+      ref.read(selectedChapterProvider.notifier).state = latest.id;
+    }
   }
 
   @override

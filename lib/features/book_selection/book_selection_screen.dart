@@ -75,6 +75,31 @@ class _BookSelectionScreenState extends ConsumerState<BookSelectionScreen> {
     controller.dispose();
   }
 
+  Future<void> _editBookName(Book book) async {
+    final controller = TextEditingController(text: book.title);
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('编辑书名'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: '书名'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('保存')),
+        ],
+      ),
+    );
+    if (result == true && controller.text.isNotEmpty && mounted) {
+      final bookDao = ref.read(bookDaoProvider);
+      await bookDao.updateBook(book.copyWith(title: controller.text));
+      _loadBooks();
+    }
+    controller.dispose();
+  }
+
   Future<void> _importTxt() async {
     final importService = TxtImportService();
     final result = await importService.pickAndReadTxt();
@@ -114,7 +139,7 @@ class _BookSelectionScreenState extends ConsumerState<BookSelectionScreen> {
     ref.read(selectedChapterProvider.notifier).state = null;
     Navigator.push(context, MaterialPageRoute(
       builder: (_) => WorkspaceScreen(bookId: bookId),
-    ));
+    )).then((_) => _loadBooks());
   }
 
   Future<void> _deleteBook(Book book) async {
@@ -193,21 +218,25 @@ class _BookSelectionScreenState extends ConsumerState<BookSelectionScreen> {
 
   Widget _buildBookGrid(ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('我的书籍', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 4),
-          Text('${_books.length} 本书', style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurfaceVariant)),
-          const SizedBox(height: 12),
+          Row(
+            children: [
+              Text('我的书籍', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+              const SizedBox(width: 8),
+              Text('${_books.length} 本', style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurfaceVariant)),
+            ],
+          ),
+          const SizedBox(height: 16),
           Expanded(
             child: GridView.builder(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 1.1,
+                crossAxisCount: 4,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 1.3,
               ),
               itemCount: _books.length + 1,
               itemBuilder: (_, i) {
@@ -223,38 +252,43 @@ class _BookSelectionScreenState extends ConsumerState<BookSelectionScreen> {
 
   Widget _buildBookCard(Book book, ThemeData theme) {
     return Card(
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
         onTap: () => _openBook(book.id),
-        onLongPress: () => _deleteBook(book),
+        onLongPress: () => _editBookName(book),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Icon(Icons.book, color: theme.colorScheme.primary, size: 20),
+                  Icon(Icons.book, color: theme.colorScheme.primary, size: 18),
                   const Spacer(),
                   PopupMenuButton<String>(
                     icon: Icon(Icons.more_vert, size: 16, color: theme.colorScheme.onSurfaceVariant),
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                     padding: EdgeInsets.zero,
                     onSelected: (v) {
+                      if (v == 'edit') _editBookName(book);
                       if (v == 'delete') _deleteBook(book);
-                      if (v == 'open') _openBook(book.id);
                     },
                     itemBuilder: (_) => [
-                      const PopupMenuItem(value: 'open', child: Text('打开')),
+                      const PopupMenuItem(value: 'edit', child: Text('编辑书名')),
                       const PopupMenuItem(value: 'delete', child: Text('删除')),
                     ],
                   ),
                 ],
               ),
               const Spacer(),
-              Text(book.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15), maxLines: 2, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 4),
-              Text('${book.wordCount} 字', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+              Text(book.title,
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                maxLines: 2, overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 6),
+              Text('${book.wordCount} 字',
+                style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+              ),
             ],
           ),
         ),
@@ -265,16 +299,16 @@ class _BookSelectionScreenState extends ConsumerState<BookSelectionScreen> {
   Widget _buildAddCard(ThemeData theme) {
     return Card(
       color: theme.colorScheme.surfaceContainerLow,
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
         onTap: _createBook,
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.add, size: 36, color: theme.colorScheme.onSurfaceVariant.withAlpha(120)),
-              const SizedBox(height: 8),
-              Text('新建书籍', style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 13)),
+              Icon(Icons.add, size: 28, color: theme.colorScheme.onSurfaceVariant.withAlpha(120)),
+              const SizedBox(height: 6),
+              Text('新建书籍', style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 12)),
             ],
           ),
         ),

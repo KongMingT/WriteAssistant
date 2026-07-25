@@ -283,16 +283,15 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
     final text = _contentController.text;
     final start = _contentController.selection.start;
     final end = _contentController.selection.end;
-    if (start == end) {
-      // 无选中文本，直接插入两个全角空格
-      _contentController.text = text.substring(0, start) + _indentStr + text.substring(start);
-      _contentController.selection = TextSelection.collapsed(offset: start + _indentStr.length);
-    } else {
-      // 有选中文本，替换为缩进
-      _contentController.text = text.substring(0, start) + _indentStr + text.substring(end);
-      _contentController.selection = TextSelection.collapsed(offset: start + _indentStr.length);
-    }
-    _onContentChanged(_contentController.text);
+    final newText = start == end
+        ? '${text.substring(0, start)}$_indentStr${text.substring(start)}'
+        : '${text.substring(0, start)}$_indentStr${text.substring(end)}';
+    final cursor = start + _indentStr.length;
+    _contentController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: cursor),
+    );
+    _onContentChanged(newText);
   }
 
   // ===== 回车自动缩进 =====
@@ -303,16 +302,19 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
     if (pos < 0) return;
     final prevNewline = text.lastIndexOf('\n', pos - 1);
     final lineStart = prevNewline + 1;
-    final line = (prevNewline < 0) ? text.substring(0, pos) : text.substring(lineStart, pos);
+    final line = prevNewline < 0 ? text.substring(0, pos) : text.substring(lineStart, pos);
     String indent = '';
     for (int i = 0; i < line.length && line[i] == '\u3000'; i++) {
       indent += '\u3000';
     }
     indent = indent.substring(0, (indent.length ~/ 2) * 2);
     final insertion = '\n$indent';
-    _contentController.text = text.substring(0, pos) + insertion + text.substring(pos);
-    _contentController.selection = TextSelection.collapsed(offset: pos + insertion.length);
-    _onContentChanged(_contentController.text);
+    final newText = '${text.substring(0, pos)}$insertion${text.substring(pos)}';
+    _contentController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: pos + insertion.length),
+    );
+    _onContentChanged(newText);
   }
 
   // ===== 工具栏操作 =====
@@ -331,16 +333,21 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
         if (line.isEmpty) return line;
         return _indentStr + line;
       }).join('\n');
-      _contentController.text = text.substring(0, startLine) + indented + text.substring(end);
-      _contentController.selection = TextSelection(baseOffset: startLine, extentOffset: startLine + indented.length);
-      _onContentChanged(_contentController.text);
+      final newText = '${text.substring(0, startLine)}$indented${text.substring(end)}';
+      _contentController.value = TextEditingValue(
+        text: newText,
+        selection: TextSelection(baseOffset: startLine, extentOffset: startLine + indented.length),
+      );
+      _onContentChanged(newText);
     } else {
-      // 单个段落
       final start = sel.start;
       final paraStart = text.lastIndexOf('\n', start - 1) + 1;
-      _contentController.text = text.substring(0, paraStart) + _indentStr + text.substring(paraStart);
-      _contentController.selection = TextSelection.collapsed(offset: start + _indentStr.length);
-      _onContentChanged(_contentController.text);
+      final newText = '${text.substring(0, paraStart)}$_indentStr${text.substring(paraStart)}';
+      _contentController.value = TextEditingValue(
+        text: newText,
+        selection: TextSelection.collapsed(offset: start + _indentStr.length),
+      );
+      _onContentChanged(newText);
     }
   }
 
@@ -349,7 +356,6 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
     if (text.isEmpty) return;
     final sel = _contentController.selection;
     if (sel.isValid && !sel.isCollapsed) {
-      // 多行选中：去掉所有选中行的缩进
       final startLine = text.lastIndexOf('\n', sel.start - 1) + 1;
       final endLine = text.indexOf('\n', sel.end);
       final end = endLine < 0 ? text.length : endLine;
@@ -359,24 +365,32 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
         if (line.startsWith('\u3000')) return line.substring(1);
         return line;
       }).join('\n');
-      _contentController.text = text.substring(0, startLine) + deindented + text.substring(end);
-      _contentController.selection = TextSelection(baseOffset: startLine, extentOffset: startLine + deindented.length);
-      _onContentChanged(_contentController.text);
+      final newText = '${text.substring(0, startLine)}$deindented${text.substring(end)}';
+      _contentController.value = TextEditingValue(
+        text: newText,
+        selection: TextSelection(baseOffset: startLine, extentOffset: startLine + deindented.length),
+      );
+      _onContentChanged(newText);
     } else {
-      // 单个段落
       final start = sel.start;
       final paraStart = text.lastIndexOf('\n', start - 1) + 1;
       final linePart = text.substring(paraStart);
       if (linePart.startsWith(_indentStr)) {
-        _contentController.text = text.substring(0, paraStart) + linePart.substring(2);
-        final newOffset = (start - 2).clamp(paraStart, text.length);
-        _contentController.selection = TextSelection.collapsed(offset: newOffset);
-        _onContentChanged(_contentController.text);
+        final newText = '${text.substring(0, paraStart)}${linePart.substring(2)}';
+        final newOffset = (start - 2).clamp(paraStart, newText.length);
+        _contentController.value = TextEditingValue(
+          text: newText,
+          selection: TextSelection.collapsed(offset: newOffset),
+        );
+        _onContentChanged(newText);
       } else if (linePart.startsWith('\u3000')) {
-        _contentController.text = text.substring(0, paraStart) + linePart.substring(1);
-        final newOffset = (start - 1).clamp(paraStart, text.length);
-        _contentController.selection = TextSelection.collapsed(offset: newOffset);
-        _onContentChanged(_contentController.text);
+        final newText = '${text.substring(0, paraStart)}${linePart.substring(1)}';
+        final newOffset = (start - 1).clamp(paraStart, newText.length);
+        _contentController.value = TextEditingValue(
+          text: newText,
+          selection: TextSelection.collapsed(offset: newOffset),
+        );
+        _onContentChanged(newText);
       }
     }
   }
@@ -390,8 +404,10 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
       return '$_indentStr$trimmed';
     }).join('\n');
     if (formatted != _contentController.text) {
-      _contentController.text = formatted;
-      _contentController.selection = TextSelection.collapsed(offset: formatted.length);
+      _contentController.value = TextEditingValue(
+        text: formatted,
+        selection: TextSelection.collapsed(offset: formatted.length),
+      );
       _onContentChanged(formatted);
     }
     if (mounted) {
