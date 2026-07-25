@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/providers.dart';
 import '../../../shared/themes/theme_provider.dart';
+import '../../outline/outline_panel.dart';
 import '../models/selection_state.dart';
 
 /// 编辑器工具栏字体列表
@@ -29,6 +30,7 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
   final TextEditingController _titleController = TextEditingController();
   String? _currentChapterId;
   bool _isLoading = false;
+  bool _showOutline = true;
   DateTime? _sessionStart;
   Timer? _statusTimer;
 
@@ -36,6 +38,24 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
   void initState() {
     super.initState();
     _statusTimer = Timer.periodic(const Duration(seconds: 1), (_) => _updateStatusBar());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _listenForceSave());
+  }
+
+  void _listenForceSave() {
+    ref.listen<int>(forceSaveProvider, (prev, next) {
+      if (prev != next && _currentChapterId != null) {
+        _doSaveNow();
+      }
+    });
+  }
+
+  Future<void> _doSaveNow() async {
+    _saveDebounce?.cancel();
+    if (_currentChapterId == null) return;
+    final chapterDao = ref.read(chapterDaoProvider);
+    await chapterDao.updateChapterContent(_currentChapterId!, _contentController.text);
+    await chapterDao.updateChapterTitle(_currentChapterId!, _titleController.text);
+    ref.read(treeRefreshProvider.notifier).state++;
   }
 
   @override
@@ -77,6 +97,17 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
           // 章节标题
           _buildTitleBar(theme),
           const Divider(height: 1),
+          // 章纲面板
+          if (_showOutline && _currentChapterId != null) ...[
+            Container(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerLow.withAlpha(80),
+                border: Border(bottom: BorderSide(color: theme.colorScheme.surfaceContainerHighest)),
+              ),
+              child: const OutlinePanel(),
+            ),
+            const Divider(height: 1),
+          ],
           // 正文
           Expanded(
             child: _isLoading
@@ -137,6 +168,11 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
           const SizedBox(width: 12),
           // 自动排版
           _toolButton(theme, Icons.auto_fix_high, '自动排版（全文加首行缩进）', _autoFormat),
+          const SizedBox(width: 12),
+          Container(height: 18, width: 1, color: theme.colorScheme.surfaceContainerHighest),
+          const SizedBox(width: 12),
+          // 大纲切换
+          _toolButton(theme, _showOutline ? Icons.list_alt : Icons.list_alt_outlined, '显示/隐藏章纲', () => setState(() => _showOutline = !_showOutline)),
         ],
       ),
     );

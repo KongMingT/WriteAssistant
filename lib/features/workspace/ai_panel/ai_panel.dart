@@ -11,7 +11,6 @@ import '../../character/character_list_screen.dart';
 import '../../settings/settings_screen.dart';
 import '../models/selection_state.dart';
 
-/// AI 辅助面板 - 右侧栏对话界面
 class AiPanel extends ConsumerStatefulWidget {
   const AiPanel({super.key});
 
@@ -34,32 +33,70 @@ class _AiPanelState extends ConsumerState<AiPanel> {
 
   Future<void> _sendMessage(String text) async {
     if (text.trim().isEmpty || _isLoading) return;
-    setState(() { _messages.add(_ChatMessage(role: 'user', content: text)); _isLoading = true; });
+    setState(() {
+      _messages.add(_ChatMessage(role: 'user', content: text));
+      _isLoading = true;
+    });
     _inputController.clear();
     _scrollToBottom();
+
     try {
       final config = await ref.read(aiConfigProvider.future);
       if (config.apiKey == null || config.apiKey!.isEmpty) {
-        setState(() { _messages.add(const _ChatMessage(role: 'assistant', content: '⚠️ 请先在 设置 → AI 模型配置 中填写 API Key')); _isLoading = false; });
+        setState(() {
+          _messages.add(const _ChatMessage(role: 'assistant', content: '⚠️ 请先在 设置 → AI 模型配置 中填写 API Key'));
+          _isLoading = false;
+        });
         return;
       }
+
       final client = AiClient();
-      final response = await client.chat(
-        provider: config.provider, apiKey: config.apiKey!,
-        messages: [
-          const AiMessage(role: 'system', content: AiPrompts.systemWriter),
-          ..._messages.where((m) => m.role != 'system').map((m) => AiMessage(role: m.role, content: m.content)),
-        ],
-      );
-      setState(() { _messages.add(_ChatMessage(role: 'assistant', content: response.content)); _isLoading = false; });
-      _scrollToBottom();
+      final apiMessages = [
+        const AiMessage(role: 'system', content: AiPrompts.systemWriter),
+        ..._messages.where((m) => m.role != 'system').map((m) => AiMessage(role: m.role, content: m.content)),
+      ];
+
+      String accumulated = '';
+
+      try {
+        await for (final chunk in client.chatStream(
+          provider: config.provider,
+          apiKey: config.apiKey!,
+          messages: apiMessages,
+        )) {
+          accumulated += chunk;
+          if (mounted) {
+            if (_messages.isNotEmpty && _messages.last.role == 'assistant') {
+              _messages.last = _ChatMessage(role: 'assistant', content: accumulated);
+            } else {
+              _messages.add(_ChatMessage(role: 'assistant', content: accumulated));
+            }
+            _scrollToBottom();
+          }
+        }
+      } catch (_) {
+        if (accumulated.isNotEmpty && mounted) {
+          if (_messages.isNotEmpty && _messages.last.role == 'assistant') {
+            _messages.last = _ChatMessage(role: 'assistant', content: accumulated);
+          }
+        }
+        rethrow;
+      }
+
+      if (mounted) setState(() => _isLoading = false);
     } catch (e) {
-      setState(() { _messages.add(_ChatMessage(role: 'assistant', content: '❌ 请求失败: $e')); _isLoading = false; });
+      if (mounted) {
+        setState(() {
+          if (_messages.isEmpty || _messages.last.role != 'assistant' || !_messages.last.content.startsWith('❌')) {
+            _messages.add(_ChatMessage(role: 'assistant', content: '❌ 请求失败: $e'));
+          }
+          _isLoading = false;
+        });
+      }
     }
   }
 
   Future<void> _quickAction(String action) async {
-    // 导航类操作：不用 await，直接用 ref.read（同步访问）
     if (action == 'analyzeBook') {
       if (!mounted) return;
       Navigator.push(context, MaterialPageRoute(builder: (_) => const BookAnalysisScreen()));
@@ -71,15 +108,23 @@ class _AiPanelState extends ConsumerState<AiPanel> {
       return;
     }
 
-    // 需要章节上下文的操作
     String chapterContext = '';
+    String bookContext = '';
     try {
       final chapterId = ref.read(selectedChapterProvider);
       if (chapterId != null) {
         final chapterDao = ref.read(chapterDaoProvider);
         final chapter = await chapterDao.getChapterById(chapterId);
         if (chapter != null && mounted) {
-          chapterContext = chapter.content.substring(0, chapter.content.length > 500 ? 500 : chapter.content.length);
+          chapterContext = chapter.content.substring(0, chapter.content.length > 2000 ? 2000 : chapter.content.length);
+        }
+      }
+      final bookId = ref.read(selectedBookProvider);
+      if (bookId != null) {
+        final characterDao = ref.read(characterDaoProvider);
+        final characters = await characterDao.getCharactersByBook(bookId);
+        if (characters.isNotEmpty) {
+          bookContext = '当前书籍角色：\n${characters.map((c) => '- ${c.name}（${c.roleType}）${c.personality != null && c.personality!.isNotEmpty ? "性格：${c.personality}" : ""}').join('\n')}';
         }
       }
     } catch (_) {}
@@ -88,18 +133,32 @@ class _AiPanelState extends ConsumerState<AiPanel> {
 
     switch (action) {
       case 'outline':
-        _inputController.text = '请帮我为以下故事生成详细章节大纲（10-20章）：\n\n故事核心：\n';
+        await _sendMessage([
+          '请为我生成一份详细的章节大纲（10-20章）：',
+          if (chapterContext.isNotEmpty) '现有章节内容参考（前2000字）：\n$chapterContext',
+          if (bookContext.isNotEmpty) bookContext,
+          '',
+          '要求：每章给出标题、核心内容、爽点/钩子，前后连贯。',
+        ].join('\n\n'));
         break;
       case 'expand':
-        _inputController.text = '请根据以下细纲扩写成一篇完整的网文章节：\n\n细纲：\n';
+        await _sendMessage([
+          '请根据以下细纲扩写成一篇完整的网文章节（约3000-4000字）。',
+          '直接输出正文，不要加额外说明。',
+          if (bookContext.isNotEmpty) bookContext,
+          if (chapterContext.isNotEmpty) '当前章节前文：\n$chapterContext',
+          '',
+          '细纲（请在下面填写你的细纲内容）：',
+        ].join('\n\n'));
         break;
       case 'naming':
-        await _sendMessage('请为网文生成一些角色名（主角、配角、反派各5个）：\n风格：古风玄幻');
-        return;
+        await _sendMessage(AiPrompts.naming('小说角色', style: '古风玄幻', count: 15));
+        break;
       case 'writerBlock':
-        _inputController.text = chapterContext.isNotEmpty
-            ? '我卡文了。当前章节最近内容：\n$chapterContext\n\n请给我3-5个后续发展方向建议。'
-            : '我卡文了，需要一些剧情发展建议。\n\n请给一些通用的网文剧情推进思路。';
+        await _sendMessage(AiPrompts.writerBlock(
+          chapterContext.isNotEmpty ? chapterContext : '(暂无近期内容)',
+          bookContext.isNotEmpty ? bookContext : '(暂无书籍设定)',
+        ));
         break;
     }
   }
@@ -116,7 +175,11 @@ class _AiPanelState extends ConsumerState<AiPanel> {
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
-        _scrollController.animateTo(_scrollController.position.maxScrollExtent, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 100),
+          curve: Curves.easeOut,
+        );
       }
     });
   }
@@ -221,7 +284,8 @@ class _AiPanelState extends ConsumerState<AiPanel> {
                       decoration: BoxDecoration(
                         color: isUser ? theme.colorScheme.primaryContainer : theme.colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(8).copyWith(
-                          bottomRight: isUser ? Radius.zero : null, bottomLeft: !isUser ? Radius.zero : null,
+                          bottomRight: isUser ? Radius.zero : null,
+                          bottomLeft: !isUser ? Radius.zero : null,
                         ),
                       ),
                       child: Text(msg.content, style: TextStyle(fontSize: 13, color: isUser ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onSurface)),
@@ -234,7 +298,6 @@ class _AiPanelState extends ConsumerState<AiPanel> {
                   if (!isUser) const Spacer(),
                 ],
               ),
-              // AI 消息底部操作按钮
               if (!isUser) Padding(
                 padding: const EdgeInsets.only(left: 32, top: 4),
                 child: Row(

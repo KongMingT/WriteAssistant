@@ -29,6 +29,16 @@ class _ChapterTreeState extends ConsumerState<ChapterTree> {
   void initState() {
     super.initState();
     _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _listenRequests());
+  }
+
+  void _listenRequests() {
+    ref.listen<int>(newChapterRequestProvider, (prev, next) {
+      if (prev != next) _createChapter();
+    });
+    ref.listen<int>(newBookRequestProvider, (prev, next) {
+      if (prev != next) _createBook();
+    });
   }
 
   @override

@@ -32,7 +32,7 @@ class _CharacterListScreenState extends ConsumerState<CharacterListScreen> {
     final selectedId = ref.read(selectedBookProvider);
     final books = await bookDao.getAllBooks();
     if (books.isNotEmpty) {
-      final targetId = books.any((b) => b.id == selectedId) ? selectedId! : books.first.id;
+      final targetId = (selectedId != null && books.any((b) => b.id == selectedId)) ? selectedId : books.first.id;
       _characters = await dao.getCharactersByBook(targetId);
     }
     if (mounted) setState(() => _isLoading = false);
@@ -47,7 +47,7 @@ class _CharacterListScreenState extends ConsumerState<CharacterListScreen> {
         final bookDao = ref.read(bookDaoProvider);
         final books = await bookDao.getAllBooks();
         final selectedId = ref.read(selectedBookProvider);
-        final bookId = books.any((b) => b.id == selectedId) ? selectedId! : (books.isNotEmpty ? books.first.id : '');
+        final bookId = (selectedId != null && books.any((b) => b.id == selectedId)) ? selectedId : (books.isNotEmpty ? books.first.id : '');
         await dao.insertCharacter(CharactersCompanion(
           id: Value(result.id), bookId: Value(bookId),
           name: Value(result.name), gender: Value(result.gender ?? ''),

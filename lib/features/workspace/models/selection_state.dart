@@ -24,3 +24,12 @@ class WritingState {
 
 final writingStateProvider = StateProvider<WritingState>((ref) => const WritingState());
 
+/// 强制保存信号（触发即时保存，绕过防抖）
+final forceSaveProvider = StateProvider<int>((ref) => 0);
+
+/// 新建章节信号
+final newChapterRequestProvider = StateProvider<int>((ref) => 0);
+
+/// 新建书籍信号
+final newBookRequestProvider = StateProvider<int>((ref) => 0);
+
