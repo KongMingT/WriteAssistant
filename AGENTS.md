@@ -5,6 +5,7 @@
 WriterAssistant 是一款**面向中文网文作者的 AI 辅助写作桌面应用**，使用 Flutter 构建，目标平台为 Windows。
 
 - **仓库**: `https://github.com/KongMingT/WriteAssistant.git`
+- **仓库**: `https://github.com/KongMingT/WriteAssistant.git`
 - **框架**: Flutter 3.27 / Dart 3.6
 - **状态管理**: Riverpod 2.x
 - **数据库**: drift (SQLite ORM, 代码生成)
@@ -151,7 +152,7 @@ lib/
 
 ---
 
-## 最近改动 (会话2)
+## 最近改动
 
 | 改动 | 说明 |
 |------|------|
@@ -161,6 +162,11 @@ lib/
 | 侧边栏重构 | `chapter_tree.dart` 接受 `bookId`，只显示该书的卷/章节，删除书籍层级管理代码 |
 | 工作区重构 | `workspace_screen.dart` 接受 `bookId` 参数，AppBar 显示书名 + 返回按钮 |
 | 首页路由 | `app.dart` home 改为 `BookSelectionScreen` |
+| 书籍卡片美化 | 仿实体书比例，渐变封面 + 书名首字母 + 书名栏 |
+| 编辑书名 | 长按卡片或菜单栏可编辑书名，同步修改数据库 |
+| 自动定位最新章节 | 进入工作区自动选中 `sortOrder` 最大的章节 |
+| 应用图标 | 替换为自定义图标（紫色背景 + W 字母） |
+| TextEditing 原子化 | 所有文本修改统一使用 `TextEditingValue` 避免光标错位 |
 | 文件清理 | `workspace_screen.dart` 移除导入 TXT 和新建书籍逻辑（移至首页） |
 
 ---

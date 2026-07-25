@@ -216,9 +216,35 @@ class _BookSelectionScreenState extends ConsumerState<BookSelectionScreen> {
     );
   }
 
+  static const _coverColors = [
+    [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+    [Color(0xFFEC4899), Color(0xFFF472B6)],
+    [Color(0xFF14B8A6), Color(0xFF2DD4BF)],
+    [Color(0xFFF59E0B), Color(0xFFFBBF24)],
+    [Color(0xFFEF4444), Color(0xFFF87171)],
+    [Color(0xFF8B5CF6), Color(0xFFA78BFA)],
+    [Color(0xFF06B6D4), Color(0xFF22D3EE)],
+    [Color(0xFF84CC16), Color(0xFFA3E635)],
+  ];
+
+  Color _coverColor(String id) {
+    final colors = _coverColors[id.hashCode.abs() % _coverColors.length];
+    return colors[0];
+  }
+
+  List<Color> _coverGradient(String id) {
+    return _coverColors[id.hashCode.abs() % _coverColors.length];
+  }
+
+  String _initials(String title) {
+    if (title.length >= 2) return title.substring(0, 2);
+    return title;
+  }
+
   Widget _buildBookGrid(ThemeData theme) {
+    final crossCount = MediaQuery.of(context).size.width > 900 ? 5 : 4;
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -232,11 +258,11 @@ class _BookSelectionScreenState extends ConsumerState<BookSelectionScreen> {
           const SizedBox(height: 16),
           Expanded(
             child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 1.3,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossCount,
+                crossAxisSpacing: 20,
+                mainAxisSpacing: 20,
+                childAspectRatio: 0.68,
               ),
               itemCount: _books.length + 1,
               itemBuilder: (_, i) {
@@ -251,46 +277,114 @@ class _BookSelectionScreenState extends ConsumerState<BookSelectionScreen> {
   }
 
   Widget _buildBookCard(Book book, ThemeData theme) {
+    final gradient = _coverGradient(book.id);
+    final initials = _initials(book.title);
     return Card(
+      elevation: 2,
+      shadowColor: gradient[0].withAlpha(80),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => _openBook(book.id),
         onLongPress: () => _editBookName(book),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.book, color: theme.colorScheme.primary, size: 18),
-                  const Spacer(),
-                  PopupMenuButton<String>(
-                    icon: Icon(Icons.more_vert, size: 16, color: theme.colorScheme.onSurfaceVariant),
-                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                    padding: EdgeInsets.zero,
-                    onSelected: (v) {
-                      if (v == 'edit') _editBookName(book);
-                      if (v == 'delete') _deleteBook(book);
-                    },
-                    itemBuilder: (_) => [
-                      const PopupMenuItem(value: 'edit', child: Text('编辑书名')),
-                      const PopupMenuItem(value: 'delete', child: Text('删除')),
-                    ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 封面区域
+            Expanded(
+              flex: 4,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: gradient,
                   ),
-                ],
+                ),
+                child: Stack(
+                  children: [
+                    // 装饰线条
+                    Positioned(
+                      top: -20, right: -20,
+                      child: Container(
+                        width: 80, height: 80,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withAlpha(15),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: -10, left: -10,
+                      child: Container(
+                        width: 50, height: 50,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withAlpha(10),
+                        ),
+                      ),
+                    ),
+                    // 首字母
+                    Center(
+                      child: Text(
+                        initials,
+                        style: TextStyle(
+                          color: Colors.white.withAlpha(200),
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    // 右上角菜单
+                    Positioned(
+                      top: 4, right: 4,
+                      child: PopupMenuButton<String>(
+                        icon: Icon(Icons.more_vert, size: 16, color: Colors.white.withAlpha(180)),
+                        constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                        padding: EdgeInsets.zero,
+                        onSelected: (v) {
+                          if (v == 'edit') _editBookName(book);
+                          if (v == 'delete') _deleteBook(book);
+                        },
+                        itemBuilder: (_) => [
+                          const PopupMenuItem(value: 'edit', child: Text('编辑书名')),
+                          const PopupMenuItem(value: 'delete', child: Text('删除')),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const Spacer(),
-              Text(book.title,
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                maxLines: 2, overflow: TextOverflow.ellipsis,
+            ),
+            // 书名区域
+            Expanded(
+              flex: 2,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  border: Border(
+                    top: BorderSide(color: theme.colorScheme.surfaceContainerHighest),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      book.title,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                      maxLines: 2, overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${book.wordCount} 字',
+                      style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 6),
-              Text('${book.wordCount} 字',
-                style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -298,7 +392,12 @@ class _BookSelectionScreenState extends ConsumerState<BookSelectionScreen> {
 
   Widget _buildAddCard(ThemeData theme) {
     return Card(
+      elevation: 1,
       color: theme.colorScheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: theme.colorScheme.surfaceContainerHighest, width: 1),
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: _createBook,
@@ -306,9 +405,9 @@ class _BookSelectionScreenState extends ConsumerState<BookSelectionScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.add, size: 28, color: theme.colorScheme.onSurfaceVariant.withAlpha(120)),
-              const SizedBox(height: 6),
-              Text('新建书籍', style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 12)),
+              Icon(Icons.add_circle_outline, size: 32, color: theme.colorScheme.onSurfaceVariant.withAlpha(120)),
+              const SizedBox(height: 8),
+              Text('新建书籍', style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 13)),
             ],
           ),
         ),
