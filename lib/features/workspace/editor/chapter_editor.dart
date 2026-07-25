@@ -245,8 +245,9 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
               _insertTab();
               return KeyEventResult.handled;
             }
-            if (event.logicalKey == LogicalKeyboardKey.enter) {
-              Future.microtask(_autoIndentOnEnter);
+            if (event.logicalKey == LogicalKeyboardKey.enter && !HardwareKeyboard.instance.isShiftPressed) {
+              _insertNewlineWithIndent();
+              return KeyEventResult.handled;
             }
           }
           return KeyEventResult.ignored;
@@ -296,28 +297,22 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
 
   // ===== 回车自动缩进 =====
 
-  void _autoIndentOnEnter() {
+  void _insertNewlineWithIndent() {
     final text = _contentController.text;
-    final cursorPos = _contentController.selection.start;
-    if (cursorPos < 1) return;
-    // 找到上一行的缩进
-    final prevNewline = text.lastIndexOf('\n', cursorPos - 2);
-    final prevLineStart = prevNewline + 1;
-    final prevLine = (prevNewline < 0)
-        ? text.substring(0, cursorPos - 1)
-        : text.substring(prevLineStart, cursorPos - 1);
-    // 提取上一行开头的全角空格
+    final pos = _contentController.selection.start;
+    if (pos < 0) return;
+    final prevNewline = text.lastIndexOf('\n', pos - 1);
+    final lineStart = prevNewline + 1;
+    final line = (prevNewline < 0) ? text.substring(0, pos) : text.substring(lineStart, pos);
     String indent = '';
-    for (int i = 0; i < prevLine.length && prevLine[i] == '\u3000'; i++) {
+    for (int i = 0; i < line.length && line[i] == '\u3000'; i++) {
       indent += '\u3000';
     }
-    // 对齐到2的倍数个全角空格
     indent = indent.substring(0, (indent.length ~/ 2) * 2);
-    if (indent.isNotEmpty) {
-      _contentController.text = text.substring(0, cursorPos) + indent + text.substring(cursorPos);
-      _contentController.selection = TextSelection.collapsed(offset: cursorPos + indent.length);
-      _onContentChanged(_contentController.text);
-    }
+    final insertion = '\n$indent';
+    _contentController.text = text.substring(0, pos) + insertion + text.substring(pos);
+    _contentController.selection = TextSelection.collapsed(offset: pos + insertion.length);
+    _onContentChanged(_contentController.text);
   }
 
   // ===== 工具栏操作 =====

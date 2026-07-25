@@ -19,7 +19,7 @@ WriterAssistant 是一款**面向中文网文作者的 AI 辅助写作桌面应�
 ```
 lib/
 ├── main.dart                          # 入口 (预加载主题后 runApp)
-├── app.dart                           # MaterialApp 根组件
+├── app.dart                           # MaterialApp 根组件 (首页=BookSelectionScreen)
 ├── core/
 │   ├── ai/
 │   │   ├── ai_client.dart             # Dio 客户端 (流式SSE + 自动重试拦截器)
@@ -46,15 +46,19 @@ lib/
 │   └── utils/
 │       └── id_generator.dart          # UUID v4 生成器 (使用 uuid 包)
 ├── features/
+│   ├── book_selection/
+│   │   └── book_selection_screen.dart # 首页：书籍卡片网格，点击进入工作区
 │   ├── workspace/
 │   │   ├── workspace_screen.dart      # 三栏布局编排 + 键盘快捷键 + 导出菜单
-│   │   ├── sidebar/chapter_tree.dart  # 书籍→卷→章节树 + 右键菜单
+│   │   ├── sidebar/chapter_tree.dart  # 纯卷→章节树 (接受 bookId, 无书籍层级)
 │   │   ├── editor/chapter_editor.dart # 编辑器 (工具栏+标题+章纲+正文+自动保存)
 │   │   ├── ai_panel/ai_panel.dart     # AI 对话面板 (流式 + 上下文)
 │   │   └── models/selection_state.dart # 选中状态 + 信号 Provider
 │   ├── outline/outline_panel.dart     # 章纲面板 (可折叠, 增删改)
+│   ├── character/
+│   │   ├── character_sheet.dart       # 角色管理弹窗 (+编辑对话框)
+│   │   └── character_list_screen.dart # (遗留) 旧版独立角色页
 │   ├── settings/settings_screen.dart  # AI 供应商配置 + 连接测试
-│   ├── character/character_list_screen.dart # 角色列表 + 编辑弹窗
 │   └── book_analysis/book_analysis_screen.dart # 拆书分析
 └── shared/
     ├── themes/theme_provider.dart     # 主题/字体 Provider
@@ -65,17 +69,24 @@ lib/
 
 ## 当前功能清单
 
+### 书籍选择首页
+- 启动后显示书籍卡片网格（书名 + 字数）
+- 点击卡片进入工作区，长按删除
+- 右下角新建书籍按钮，导入 TXT 按钮
+- 新建/导入后自动跳转工作区
+- AppBar 返回按钮回到书籍选择页
+
 ### 编辑器
 - 三栏可拖拽布局（目录 | 编辑器 | AI 面板），面板可折叠
 - 自动保存：正文 3 秒防抖，标题 500ms 防抖；`Ctrl+S` 强制即时保存
 - 4 种中文字体（宋体/楷体/黑体/微软雅黑），字号 12-32px
-- Tab 插入全角空格首行缩进，Enter 自动继承前导缩进
+- Tab 插入全角空格首行缩进，Enter 自动继承前导缩进（拦截键事件手动插入，无时序问题）
 - 增加/减少缩进（支持单段落和多行选中），自动排版全文
 - 编辑器内嵌**章纲面板**（可折叠），支持大纲节点的添加/编辑/删除
 
 ### 书籍管理
-- 书籍 → 卷 → 章节三级树形结构
-- 右键菜单：新建、重命名、删除（带确认对话框）
+- 书籍 → 卷 → 章节三级结构，侧边栏只显示当前书的卷/章节
+- 侧边栏右键菜单：新建卷/章、重命名、删除（带确认对话框）
 - 自动命名（新建时生成 "第一卷"/"第一章" 等）
 - 导入 TXT（自动检测编码 UTF-8/GBK，按章节拆分）
 - 导出 TXT（单章节或整本书）
@@ -89,6 +100,8 @@ lib/
 - 一键复制 AI 回复，清空对话
 
 ### 角色管理
+- 从工作区 AppBar 人物按钮打开 **底部弹窗**，不离开编辑区
+- 弹窗标题显示 "《书名》- 人物管理"
 - 角色卡片列表（角色类型标签：主角/反派/配角）
 - CRUD 弹窗：姓名、角色类型、性别、年龄、性格、背景、外貌、备注
 - 自动关联当前书籍
@@ -107,7 +120,6 @@ lib/
 |--------|------|
 | `Ctrl+S` | 强制保存当前章节 |
 | `Ctrl+N` | 新建章节 |
-| `Ctrl+Shift+N` | 新建书籍 |
 | `Ctrl+E` | 导出当前章节 |
 
 ---
@@ -124,7 +136,12 @@ lib/
 使用 `StateProvider<int>` 作为信号：
 - `treeRefreshProvider` — 目录树刷新
 - `forceSaveProvider` — 强制保存（快捷键 Ctrl+S 触发）
-- `newChapterRequestProvider` / `newBookRequestProvider` — 全局新建操作
+- `newChapterRequestProvider` — 全局新建章节
+
+### 页面路由
+- `BookSelectionScreen` (首页) → `Navigator.push` → `WorkspaceScreen(bookId)`
+- 工作区 AppBar 返回按钮 → `Navigator.pop` → 回到书籍选择页
+- 角色管理、拆书、设置均为独立路由或弹窗
 
 ### 数据库
 - drift ORM，9 张表，7 个 DAO
@@ -134,21 +151,17 @@ lib/
 
 ---
 
-## 最近改动 (本次会话)
+## 最近改动 (会话2)
 
 | 改动 | 说明 |
 |------|------|
-| ID 生成器 | `DateTime.now()` 改为 `uuid.v4()`，消除碰撞风险 |
-| 空安全 | 修复 `character_list_screen.dart:50` 的 `selectedId` 空指针 |
-| 主题闪烁 | `main.dart` 预加载主题偏好后启动，消除启动闪烁 |
-| 键盘快捷键 | `Ctrl+S/N/E`，使用信号 Provider 跨组件触发 |
-| TXT 导出 | 新建 `txt_export_service.dart`，AppBar 新增导出菜单 |
-| 章纲面板 | 新建 `features/outline/outline_panel.dart`，嵌入编辑器 |
-| AI 流式 | `ai_client.dart` 新增 `chatStream()` SSE 流式，AI 面板打字机效果 |
-| AI 重试 | 新增 `_RetryInterceptor`，超时/5xx 自动重试 2 次 |
-| AI 上下文 | 快捷操作自动携带章节内容 + 角色列表 |
-| 仓库清理 | 删除 `vs_community.exe`、`push_log.txt` |
-| 依赖 | `pubspec.yaml` 添加 `uuid: ^4.0.0` |
+| 回车缩进重写 | 拦截 Enter 键手动插入 `\n` + 前导全角空格，不再依赖 `Future.microtask`，Shift+Enter 跳过缩进 |
+| 角色管理 -> 弹窗 | `character_sheet.dart` 新建，工作区内 `showModalBottomSheet` 展示角色列表，显示当前书名 |
+| 书籍选择首页 | `book_selection_screen.dart` 新建，卡片网格展示所有书籍，点击进入工作区 |
+| 侧边栏重构 | `chapter_tree.dart` 接受 `bookId`，只显示该书的卷/章节，删除书籍层级管理代码 |
+| 工作区重构 | `workspace_screen.dart` 接受 `bookId` 参数，AppBar 显示书名 + 返回按钮 |
+| 首页路由 | `app.dart` home 改为 `BookSelectionScreen` |
+| 文件清理 | `workspace_screen.dart` 移除导入 TXT 和新建书籍逻辑（移至首页） |
 
 ---
 
@@ -164,12 +177,13 @@ lib/
 5. **导入格式增强** — 当前 TXT 导入正则 `(第[一二三四五六七八九十百千万０-９0-9]+[章回节部])` 会遗漏 "序章"、"尾声"、"Chapter 1" 等格式。
 6. **搜索功能** — 缺少全局搜索/替换，对大型作品影响较大。
 7. **字数统计优化** — `BookDao.getBookWordCount()` 全表遍历，应改为 SQL `SUM` 查询。
+8. **书籍删除级联** — `book_dao.dart` 的 `deleteBook` 不会级联删除卷和章节，需要手动处理。
 
 ### 低优先级
-8. **多语言支持** — 所有 UI 字符串硬编码为中文，未做 i18n。
-9. **日志系统** — 无正式日志框架，`avoid_print` lint 开启但无处输出。
-10. **自动更新** — 无版本检测/更新机制。
-11. **云同步** — 无云端备份/同步功能。
+9. **多语言支持** — 所有 UI 字符串硬编码为中文，未做 i18n。
+10. **日志系统** — 无正式日志框架，`avoid_print` lint 开启但无处输出。
+11. **自动更新** — 无版本检测/更新机制。
+12. **云同步** — 无云端备份/同步功能。
 
 ### 已知限制
 - Windows 独占（Android 和 Web 有配置但未测试）

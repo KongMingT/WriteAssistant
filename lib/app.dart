@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'features/workspace/workspace_screen.dart';
+import 'features/book_selection/book_selection_screen.dart';
 import 'shared/themes/theme_provider.dart';
 
 class WriterAssistantApp extends ConsumerWidget {
@@ -28,7 +28,7 @@ class WriterAssistantApp extends ConsumerWidget {
         useMaterial3: true,
       ),
       themeMode: themeMode,
-      home: const WorkspaceScreen(),
+      home: const BookSelectionScreen(),
     );
   }
 }

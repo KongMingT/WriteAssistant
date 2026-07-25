@@ -4,13 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../book_analysis/book_analysis_screen.dart';
-import '../character/character_list_screen.dart';
+import '../character/character_sheet.dart';
 import '../settings/settings_screen.dart';
-import '../../core/database/database.dart';
 import '../../core/database/providers.dart';
-import '../../core/services/txt_import_service.dart';
 import '../../core/services/txt_export_service.dart';
-import '../../core/utils/id_generator.dart';
 import '../../shared/widgets/status_bar.dart';
 import 'ai_panel/ai_panel.dart';
 import 'editor/chapter_editor.dart';
@@ -18,7 +15,8 @@ import 'models/selection_state.dart';
 import 'sidebar/chapter_tree.dart';
 
 class WorkspaceScreen extends ConsumerStatefulWidget {
-  const WorkspaceScreen({super.key});
+  final String bookId;
+  const WorkspaceScreen({super.key, required this.bookId});
 
   @override
   ConsumerState<WorkspaceScreen> createState() => _WorkspaceScreenState();
@@ -30,6 +28,21 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> {
   bool _sidebarCollapsed = false;
   bool _aiPanelCollapsed = false;
   final _focusNode = FocusNode();
+  String _bookTitle = '';
+
+  @override
+  void initState() {
+    super.initState();
+    ref.read(selectedBookProvider.notifier).state = widget.bookId;
+    ref.read(selectedChapterProvider.notifier).state = null;
+    _loadBookTitle();
+  }
+
+  Future<void> _loadBookTitle() async {
+    final bookDao = ref.read(bookDaoProvider);
+    final book = await bookDao.getBookById(widget.bookId);
+    if (mounted && book != null) setState(() => _bookTitle = book.title);
+  }
 
   @override
   void dispose() {
@@ -66,6 +79,10 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> {
     }
   }
 
+  void _showCharacterSheet() {
+    showCharacterSheet(context, ref);
+  }
+
   Future<void> _exportCurrentChapter() async {
     final chapterId = ref.read(selectedChapterProvider);
     if (chapterId == null) {
@@ -89,22 +106,17 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> {
   }
 
   Future<void> _exportAllChapters() async {
-    final bookId = ref.read(selectedBookProvider);
-    if (bookId == null) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请先选择一本书')));
-      return;
-    }
-    final bookDao = ref.read(bookDaoProvider);
     final volumeDao = ref.read(volumeDaoProvider);
     final chapterDao = ref.read(chapterDaoProvider);
-    final book = await bookDao.getBookById(bookId);
+    final bookDao = ref.read(bookDaoProvider);
+    final book = await bookDao.getBookById(widget.bookId);
     if (book == null) return;
 
     final exportService = TxtExportService();
     final dir = await exportService.pickExportDirectory();
     if (dir == null || !mounted) return;
 
-    final volumes = await volumeDao.getVolumesByBook(bookId);
+    final volumes = await volumeDao.getVolumesByBook(widget.bookId);
     final chapters = <({String title, String content})>[];
     for (final vol in volumes) {
       final volChapters = await chapterDao.getChaptersByVolume(vol.id);
@@ -138,7 +150,7 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> {
                     _buildResizablePanel(
                       width: _sidebarWidth, minWidth: 180, maxWidth: 400,
                       onResize: (w) => setState(() => _sidebarWidth = w),
-                      child: const ChapterTree(),
+                      child: ChapterTree(bookId: widget.bookId),
                     ),
                   _buildCollapseHandle(
                     collapsed: _sidebarCollapsed,
@@ -169,14 +181,14 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> {
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      title: const Text('WriterAssistant'),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back),
+        tooltip: '返回书籍列表',
+        onPressed: () => Navigator.pop(context),
+      ),
+      title: Text(_bookTitle.isEmpty ? '加载中...' : _bookTitle),
       centerTitle: false,
       actions: [
-        IconButton(
-          icon: const Icon(Icons.file_open_outlined),
-          tooltip: '导入 TXT',
-          onPressed: () => _importTxt(),
-        ),
         PopupMenuButton<String>(
           icon: const Icon(Icons.file_download_outlined),
           tooltip: '导出',
@@ -192,7 +204,7 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> {
         IconButton(
           icon: const Icon(Icons.people_outlined),
           tooltip: '人物管理',
-          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CharacterListScreen())),
+          onPressed: _showCharacterSheet,
         ),
         IconButton(
           icon: const Icon(Icons.auto_stories_outlined),
@@ -206,38 +218,6 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> {
         ),
       ],
     );
-  }
-
-  Future<void> _importTxt() async {
-    final importService = TxtImportService();
-    final result = await importService.pickAndReadTxt();
-    if (result != null && mounted) {
-      final now = DateTime.now();
-      final bookId = generateId();
-      final volId = generateId();
-      final bookDao = ref.read(bookDaoProvider);
-      final volumeDao = ref.read(volumeDaoProvider);
-      final chapterDao = ref.read(chapterDaoProvider);
-      await bookDao.insertBook(BooksCompanion(
-        id: Value(bookId), title: Value(result.fileName),
-        createdAt: Value(now), updatedAt: Value(now),
-      ));
-      await volumeDao.insertVolume(VolumesCompanion(
-        id: Value(volId), bookId: Value(bookId), title: const Value('第一卷'),
-        sortOrder: const Value(0), createdAt: Value(now),
-      ));
-      final chapters = importService.splitChapters(result.content);
-      for (int i = 0; i < chapters.length; i++) {
-        await chapterDao.insertChapter(ChaptersCompanion(
-          id: Value(generateId()), volumeId: Value(volId),
-          title: Value('第${i + 1}章'), content: Value(chapters[i]),
-          wordCount: Value(chapters[i].length),
-          sortOrder: Value(i), createdAt: Value(now), updatedAt: Value(now),
-        ));
-      }
-      ref.read(treeRefreshProvider.notifier).state++;
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('已导入 ${chapters.length} 章到「${result.fileName}」')));
-    }
   }
 
   Widget _buildResizablePanel({
