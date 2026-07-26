@@ -28,7 +28,7 @@ lib/
 │   │   └── prompts/prompts.dart       # 5 套提示词模板
 │   ├── database/
 │   │   ├── database.dart              # AppDatabase 定义
-│   │   ├── database.g.dart            # Drift 生成代码 (~8000行)
+│   │   ├── database.g.dart            # Drift 生成代码 (~8800行)
 │   │   ├── providers.dart             # 所有 DAO 的 Riverpod Provider
 │   │   ├── tables/ (9张表)
 │   │   │   ├── books.dart             # 书籍
@@ -148,7 +148,7 @@ lib/
 - drift ORM，9 张表，7 个 DAO
 - 数据库文件路径：`getApplicationDocumentsDirectory()/writer_assistant.db`
 - 使用 String UUID 作为主键（`uuid` 包 v4）
-- **注意**: 当前 `schemaVersion=1`，`onUpgrade` 为空，**禁止直接改表** — 必须先添加迁移逻辑
+- **注意**: `schemaVersion=2`，`onUpgrade` 已实现 v1→v2 迁移逻辑（12 列新增）。改表时必须同步更新 `schemaVersion` 和 `onUpgrade`
 
 ---
 
@@ -168,28 +168,28 @@ lib/
 | 应用图标 | 替换为自定义图标（紫色背景 + W 字母） |
 | TextEditing 原子化 | 所有文本修改统一使用 `TextEditingValue` 避免光标错位 |
 | 文件清理 | `workspace_screen.dart` 移除导入 TXT 和新建书籍逻辑（移至首页） |
+| 字数同步修复 | 保存章节后通过 `bookDao.recalculateBookWordCount()` (SQL SUM) 同步更新 `books.wordCount` |
+| 数据库迁移 v1→v2 | 新增 12 列：books(author,status,genre), volumes(updatedAt), character_relations(createdAt), outline_nodes(createdAt,updatedAt), plot_lines(sortOrder,createdAt), plot_nodes(createdAt,updatedAt), writing_sessions(chapterId) |
 
 ---
 
 ## 待完善 & 注意事项
 
 ### 高优先级
-1. **数据库迁移** — `schemaVersion=1`，`onUpgrade` 为空。任何表结构变更必须先实现迁移逻辑，否则用户数据会丢失。
-2. **单元测试** — 目前仅 1 个冒烟测试。7 个 DAO 完全无测试覆盖，建议优先覆盖。
-3. **AI 面板滚动闪烁** — 流式响应时 `_scrollToBottom` 高频触发，可能造成滚动条抖动。可增加防抖或只在末尾追加时滚动。
+1. **单元测试** — 目前仅 1 个冒烟测试。7 个 DAO 完全无测试覆盖，建议优先覆盖。
+2. **AI 面板滚动闪烁** — 流式响应时 `_scrollToBottom` 高频触发，可能造成滚动条抖动。可增加防抖或只在末尾追加时滚动。
 
 ### 中优先级
-4. **大章节性能** — `chapters.content` 为 `TextColumn` 无大小限制，长篇章节可能导致内存问题。可考虑分页加载或惰性加载。
-5. **导入格式增强** — 当前 TXT 导入正则 `(第[一二三四五六七八九十百千万０-９0-9]+[章回节部])` 会遗漏 "序章"、"尾声"、"Chapter 1" 等格式。
-6. **搜索功能** — 缺少全局搜索/替换，对大型作品影响较大。
-7. **字数统计优化** — `BookDao.getBookWordCount()` 全表遍历，应改为 SQL `SUM` 查询。
-8. **书籍删除级联** — `book_dao.dart` 的 `deleteBook` 不会级联删除卷和章节，需要手动处理。
+3. **大章节性能** — `chapters.content` 为 `TextColumn` 无大小限制，长篇章节可能导致内存问题。可考虑分页加载或惰性加载。
+4. **导入格式增强** — 当前 TXT 导入正则 `(第[一二三四五六七八九十百千万０-９0-9]+[章回节部])` 会遗漏 "序章"、"尾声"、"Chapter 1" 等格式。
+5. **搜索功能** — 缺少全局搜索/替换，对大型作品影响较大。
+6. **书籍删除级联** — `book_dao.dart` 的 `deleteBook` 不会级联删除卷和章节，需要手动处理。
 
 ### 低优先级
-9. **多语言支持** — 所有 UI 字符串硬编码为中文，未做 i18n。
-10. **日志系统** — 无正式日志框架，`avoid_print` lint 开启但无处输出。
-11. **自动更新** — 无版本检测/更新机制。
-12. **云同步** — 无云端备份/同步功能。
+7. **多语言支持** — 所有 UI 字符串硬编码为中文，未做 i18n。
+8. **日志系统** — 无正式日志框架，`avoid_print` lint 开启但无处输出。
+9. **自动更新** — 无版本检测/更新机制。
+10. **云同步** — 无云端备份/同步功能。
 
 ### 已知限制
 - Windows 独占（Android 和 Web 有配置但未测试）
