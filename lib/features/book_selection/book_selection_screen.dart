@@ -8,6 +8,7 @@ import '../../core/services/txt_import_service.dart';
 import '../../core/utils/id_generator.dart';
 import '../workspace/models/selection_state.dart';
 import '../workspace/workspace_screen.dart';
+import '../../shared/widgets/app_logo.dart';
 
 class BookSelectionScreen extends ConsumerStatefulWidget {
   const BookSelectionScreen({super.key});
@@ -166,7 +167,7 @@ class _BookSelectionScreenState extends ConsumerState<BookSelectionScreen> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('WriterAssistant'),
+        title: const AppLogo(size: 28, showText: true),
         centerTitle: false,
         actions: [
           IconButton(
@@ -227,24 +228,26 @@ class _BookSelectionScreenState extends ConsumerState<BookSelectionScreen> {
     [Color(0xFF84CC16), Color(0xFFA3E635)],
   ];
 
-  Color _coverColor(String id) {
-    final colors = _coverColors[id.hashCode.abs() % _coverColors.length];
-    return colors[0];
-  }
-
   List<Color> _coverGradient(String id) {
     return _coverColors[id.hashCode.abs() % _coverColors.length];
   }
 
-  String _initials(String title) {
-    if (title.length >= 2) return title.substring(0, 2);
-    return title;
+  String _formatTitle(String title) {
+    if (title.length <= 5) return title;
+    if (title.length <= 10) {
+      return '${title.substring(0, 5)}\n${title.substring(5)}';
+    }
+    if (title.length <= 15) {
+      return '${title.substring(0, 5)}\n${title.substring(5, 10)}\n${title.substring(10)}';
+    }
+    return '${title.substring(0, 5)}\n${title.substring(5, 10)}\n${title.substring(10, 15)}…';
   }
 
   Widget _buildBookGrid(ThemeData theme) {
-    final crossCount = MediaQuery.of(context).size.width > 900 ? 5 : 4;
+    final width = MediaQuery.of(context).size.width;
+    final crossCount = width > 1200 ? 6 : (width > 900 ? 5 : 4);
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -260,9 +263,9 @@ class _BookSelectionScreenState extends ConsumerState<BookSelectionScreen> {
             child: GridView.builder(
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: crossCount,
-                crossAxisSpacing: 20,
+                crossAxisSpacing: 16,
                 mainAxisSpacing: 20,
-                childAspectRatio: 0.68,
+                childAspectRatio: 0.65,
               ),
               itemCount: _books.length + 1,
               itemBuilder: (_, i) {
@@ -278,12 +281,13 @@ class _BookSelectionScreenState extends ConsumerState<BookSelectionScreen> {
 
   Widget _buildBookCard(Book book, ThemeData theme) {
     final gradient = _coverGradient(book.id);
-    final initials = _initials(book.title);
+
     return Card(
       elevation: 2,
       shadowColor: gradient[0].withAlpha(80),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       clipBehavior: Clip.antiAlias,
+      margin: EdgeInsets.zero,
       child: InkWell(
         onTap: () => _openBook(book.id),
         onLongPress: () => _editBookName(book),
@@ -303,7 +307,7 @@ class _BookSelectionScreenState extends ConsumerState<BookSelectionScreen> {
                 ),
                 child: Stack(
                   children: [
-                    // 装饰线条
+                    // 装饰圆
                     Positioned(
                       top: -20, right: -20,
                       child: Container(
@@ -324,23 +328,30 @@ class _BookSelectionScreenState extends ConsumerState<BookSelectionScreen> {
                         ),
                       ),
                     ),
-                    // 首字母
+                    // 书名居中显示
                     Center(
-                      child: Text(
-                        initials,
-                        style: TextStyle(
-                          color: Colors.white.withAlpha(200),
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Text(
+                          _formatTitle(book.title),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white.withAlpha(230),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            height: 1.4,
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),
                     // 右上角菜单
                     Positioned(
-                      top: 4, right: 4,
+                      top: 2, right: 2,
                       child: PopupMenuButton<String>(
-                        icon: Icon(Icons.more_vert, size: 16, color: Colors.white.withAlpha(180)),
-                        constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                        icon: Icon(Icons.more_vert, size: 14, color: Colors.white.withAlpha(160)),
+                        constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
                         padding: EdgeInsets.zero,
                         onSelected: (v) {
                           if (v == 'edit') _editBookName(book);
@@ -356,29 +367,31 @@ class _BookSelectionScreenState extends ConsumerState<BookSelectionScreen> {
                 ),
               ),
             ),
-            // 书名区域
+            // 底部信息
             Expanded(
-              flex: 2,
+              flex: 1,
               child: Container(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+                padding: const EdgeInsets.fromLTRB(10, 6, 10, 5),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surface,
                   border: Border(
-                    top: BorderSide(color: theme.colorScheme.surfaceContainerHighest),
+                    top: BorderSide(color: theme.colorScheme.surfaceContainerHighest, width: 0.5),
                   ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Text(
-                      book.title,
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                      maxLines: 2, overflow: TextOverflow.ellipsis,
+                    Expanded(
+                      child: Text(
+                        book.title,
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(width: 4),
                     Text(
                       '${book.wordCount} 字',
-                      style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+                      style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant),
                     ),
                   ],
                 ),
@@ -405,13 +418,14 @@ class _BookSelectionScreenState extends ConsumerState<BookSelectionScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.add_circle_outline, size: 32, color: theme.colorScheme.onSurfaceVariant.withAlpha(120)),
-              const SizedBox(height: 8),
-              Text('新建书籍', style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 13)),
+              Icon(Icons.add_circle_outline, size: 28, color: theme.colorScheme.onSurfaceVariant.withAlpha(120)),
+              const SizedBox(height: 6),
+              Text('新建书籍', style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 12)),
             ],
           ),
         ),
       ),
     );
   }
+
 }
