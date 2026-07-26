@@ -10,6 +10,8 @@ class PlotNodes extends Table {
   TextColumn get title => text()();
   TextColumn get content => text().nullable()();
   IntColumn get sortOrder => integer()();
+  DateTimeColumn get createdAt => dateTime().nullable()();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};

@@ -36,7 +36,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration {
@@ -45,7 +45,20 @@ class AppDatabase extends _$AppDatabase {
         await m.createAll();
       },
       onUpgrade: (m, from, to) async {
-        // 后续版本升级逻辑
+        if (from < 2) {
+          await m.addColumn(books, books.author);
+          await m.addColumn(books, books.status);
+          await m.addColumn(books, books.genre);
+          await m.addColumn(volumes, volumes.updatedAt);
+          await m.addColumn(characterRelations, characterRelations.createdAt);
+          await m.addColumn(outlineNodes, outlineNodes.createdAt);
+          await m.addColumn(outlineNodes, outlineNodes.updatedAt);
+          await m.addColumn(plotLines, plotLines.sortOrder);
+          await m.addColumn(plotLines, plotLines.createdAt);
+          await m.addColumn(plotNodes, plotNodes.createdAt);
+          await m.addColumn(plotNodes, plotNodes.updatedAt);
+          await m.addColumn(writingSessions, writingSessions.chapterId);
+        }
       },
     );
   }

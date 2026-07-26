@@ -10,6 +10,7 @@ class CharacterRelations extends Table {
   TextColumn get characterBId => text().references(Characters, #id)();
   TextColumn get relationType => text()();
   TextColumn get description => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};

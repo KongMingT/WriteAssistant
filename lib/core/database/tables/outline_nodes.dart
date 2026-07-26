@@ -10,6 +10,8 @@ class OutlineNodes extends Table {
   TextColumn get content => text().nullable()();
   IntColumn get sortOrder => integer()();
   TextColumn get type => text().withDefault(const Constant('outline'))();
+  DateTimeColumn get createdAt => dateTime().nullable()();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};

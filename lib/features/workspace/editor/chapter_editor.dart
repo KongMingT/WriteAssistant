@@ -53,8 +53,13 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
     _saveDebounce?.cancel();
     if (_currentChapterId == null) return;
     final chapterDao = ref.read(chapterDaoProvider);
+    final bookDao = ref.read(bookDaoProvider);
     await chapterDao.updateChapterContent(_currentChapterId!, _contentController.text);
     await chapterDao.updateChapterTitle(_currentChapterId!, _titleController.text);
+    final bookId = ref.read(selectedBookProvider);
+    if (bookId != null) {
+      await bookDao.recalculateBookWordCount(bookId);
+    }
     ref.read(treeRefreshProvider.notifier).state++;
   }
 
@@ -464,6 +469,11 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
       if (_currentChapterId == null) return;
       final chapterDao = ref.read(chapterDaoProvider);
       await chapterDao.updateChapterContent(_currentChapterId!, text);
+      final bookDao = ref.read(bookDaoProvider);
+      final bookId = ref.read(selectedBookProvider);
+      if (bookId != null) {
+        await bookDao.recalculateBookWordCount(bookId);
+      }
     });
   }
 

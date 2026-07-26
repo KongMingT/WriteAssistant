@@ -31,18 +31,17 @@ class BookDao extends DatabaseAccessor<AppDatabase> {
     await (delete(db.books)..where((b) => b.id.equals(id))).go();
   }
 
-  /// 获取书籍总字数
-  Future<int> getBookWordCount(String bookId) async {
-    final volumes = await (select(db.volumes)
-          ..where((v) => v.bookId.equals(bookId)))
-        .get();
-    int total = 0;
-    for (final vol in volumes) {
-      final chapters = await (select(db.chapters)
-            ..where((c) => c.volumeId.equals(vol.id)))
-          .get();
-      total += chapters.fold<int>(0, (sum, ch) => sum + ch.wordCount);
-    }
-    return total;
+  /// 重新计算并更新书籍字数（SQL SUM 聚合查询）
+  Future<void> recalculateBookWordCount(String bookId) async {
+    final result = await customSelect(
+      'SELECT COALESCE(SUM(c.word_count), 0) AS total '
+      'FROM chapters c '
+      'INNER JOIN volumes v ON v.id = c.volume_id '
+      'WHERE v.book_id = ?',
+      variables: [Variable<String>(bookId)],
+    ).getSingle();
+    final total = result.data['total'] as int;
+    await (update(db.books)..where((b) => b.id.equals(bookId)))
+        .write(BooksCompanion(wordCount: Value(total)));
   }
 }

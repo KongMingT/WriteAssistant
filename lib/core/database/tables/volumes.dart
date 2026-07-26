@@ -8,6 +8,7 @@ class Volumes extends Table {
   TextColumn get title => text()();
   IntColumn get sortOrder => integer()();
   DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
