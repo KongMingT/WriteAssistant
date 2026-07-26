@@ -50,8 +50,23 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
   }
 
   Future<void> _doSaveNow() async {
+    await _saveImmediately();
+  }
+
+  @override
+  void dispose() {
+    _saveImmediately();
+    _contentController.dispose();
+    _titleController.dispose();
+    _statusTimer?.cancel();
     _saveDebounce?.cancel();
+    _titleDebounce?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _saveImmediately() async {
     if (_currentChapterId == null) return;
+    _saveDebounce?.cancel();
     final chapterDao = ref.read(chapterDaoProvider);
     final bookDao = ref.read(bookDaoProvider);
     await chapterDao.updateChapterContent(_currentChapterId!, _contentController.text);
@@ -61,16 +76,6 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
       await bookDao.recalculateBookWordCount(bookId);
     }
     ref.read(treeRefreshProvider.notifier).state++;
-  }
-
-  @override
-  void dispose() {
-    _contentController.dispose();
-    _titleController.dispose();
-    _statusTimer?.cancel();
-    _saveDebounce?.cancel();
-    _titleDebounce?.cancel();
-    super.dispose();
   }
 
   // ===== 缩进常量 =====
@@ -435,6 +440,7 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
   // ===== 数据加载 =====
 
   Future<void> _loadChapter(String chapterId) async {
+    await _saveImmediately();
     setState(() => _isLoading = true);
     final chapterDao = ref.read(chapterDaoProvider);
     final chapter = await chapterDao.getChapterById(chapterId);
