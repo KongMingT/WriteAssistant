@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:path/path.dart' as p;
 
 class TxtExportService {
   Future<String?> pickExportDirectory() async {
@@ -11,7 +12,7 @@ class TxtExportService {
 
   Future<void> exportChapter(String directory, String title, String content) async {
     final safeName = title.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
-    final file = File('$directory\\$safeName.txt');
+    final file = File(p.join(directory, '$safeName.txt'));
     await file.writeAsString(content, encoding: utf8);
   }
 
@@ -25,7 +26,7 @@ class TxtExportService {
       buffer.writeln('');
       buffer.writeln('');
     }
-    final file = File('$directory\\$safeName.txt');
+    final file = File(p.join(directory, '$safeName.txt'));
     await file.writeAsString(buffer.toString(), encoding: utf8);
   }
 }
