@@ -6,6 +6,7 @@ import '../../../core/ai/ai_client.dart';
 import '../../../core/ai/models/ai_model_config.dart';
 import '../../../core/ai/prompts/prompts.dart';
 import '../../../core/database/providers.dart';
+import '../../../shared/themes/theme_provider.dart';
 import '../../book_analysis/book_analysis_screen.dart';
 import '../../character/character_list_screen.dart';
 import '../../settings/settings_screen.dart';
@@ -172,7 +173,14 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     }
   }
 
+  bool _isNearBottom() {
+    if (!_scrollController.hasClients) return true;
+    const threshold = 50.0;
+    return _scrollController.position.maxScrollExtent - _scrollController.position.pixels <= threshold;
+  }
+
   void _scrollToBottom() {
+    if (!_isNearBottom()) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -187,6 +195,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final fontFamily = ref.watch(editorFontFamilyProvider);
     return Container(
       color: theme.colorScheme.surfaceContainerLow,
       child: Column(
@@ -195,9 +204,9 @@ class _AiPanelState extends ConsumerState<AiPanel> {
           const Divider(height: 1),
           _buildQuickActions(theme),
           const Divider(height: 1),
-          Expanded(child: _buildMessageList(theme)),
+          Expanded(child: _buildMessageList(theme, fontFamily)),
           const Divider(height: 1),
-          _buildInputArea(theme),
+          _buildInputArea(theme, fontFamily),
         ],
       ),
     );
@@ -243,15 +252,15 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     );
   }
 
-  Widget _buildMessageList(ThemeData theme) {
+  Widget _buildMessageList(ThemeData theme, String fontFamily) {
     if (_messages.isEmpty && !_isLoading) {
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.chat_outlined, size: 40, color: theme.colorScheme.onSurfaceVariant.withAlpha(60)),
           const SizedBox(height: 8),
-          Text('向 AI 助手提问', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
+          Text('向 AI 助手提问', style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontFamily: fontFamily)),
           const SizedBox(height: 4),
-          Text('或使用上方快捷功能', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant.withAlpha(120))),
+          Text('或使用上方快捷功能', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant.withAlpha(120), fontFamily: fontFamily)),
         ]),
       );
     }
@@ -288,7 +297,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
                           bottomLeft: !isUser ? Radius.zero : null,
                         ),
                       ),
-                      child: Text(msg.content, style: TextStyle(fontSize: 13, color: isUser ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onSurface)),
+                      child: Text(msg.content, style: TextStyle(fontSize: 13, fontFamily: fontFamily, color: isUser ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onSurface)),
                     ),
                   ),
                   if (isUser) ...[
@@ -319,7 +328,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     );
   }
 
-  Widget _buildInputArea(ThemeData theme) {
+  Widget _buildInputArea(ThemeData theme, String fontFamily) {
     return Container(
       padding: const EdgeInsets.all(12),
       child: Row(children: [
@@ -327,7 +336,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
           child: TextField(
             controller: _inputController,
             maxLines: 3, minLines: 1,
-            style: const TextStyle(fontSize: 13),
+            style: TextStyle(fontSize: 13, fontFamily: fontFamily),
             decoration: InputDecoration(
               hintText: '输入问题...', isDense: true,
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),

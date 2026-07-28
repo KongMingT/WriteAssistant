@@ -156,6 +156,12 @@ lib/
 
 | 改动 | 说明 |
 |------|------|
+| DAO 单元测试 | 7 个 DAO 共 34 个测试用例全部通过。`AppDatabase` 重构为接受可选 `QueryExecutor` 以支持 `NativeDatabase.memory()` 测试。新增 `sqlite3` dev 依赖 |
+| AI 面板滚动闪烁修复 | `_scrollToBottom` 增加 `_isNearBottom` 检查，用户离开底部 50px 时停止自动滚动 |
+| AI 面板字体同步 | AI 面板文字和输入框复用编辑器字体 (`editorFontFamilyProvider`)，跟随用户选择的宋体/楷体/黑体/微软雅黑 |
+| 构建 | `flutter build windows --debug` 成功 |
+
+
 | 回车缩进重写 | 拦截 Enter 键手动插入 `\n` + 前导全角空格，不再依赖 `Future.microtask`，Shift+Enter 跳过缩进 |
 | 角色管理 -> 弹窗 | `character_sheet.dart` 新建，工作区内 `showModalBottomSheet` 展示角色列表，显示当前书名 |
 | 书籍选择首页 | `book_selection_screen.dart` 新建，卡片网格展示所有书籍，点击进入工作区 |
@@ -176,20 +182,18 @@ lib/
 ## 待完善 & 注意事项
 
 ### 高优先级
-1. **单元测试** — 目前仅 1 个冒烟测试。7 个 DAO 完全无测试覆盖，建议优先覆盖。
-2. **AI 面板滚动闪烁** — 流式响应时 `_scrollToBottom` 高频触发，可能造成滚动条抖动。可增加防抖或只在末尾追加时滚动。
+1. **大章节性能** — `chapters.content` 为 `TextColumn` 无大小限制，长篇章节可能导致内存问题。可考虑分页加载或惰性加载。
+2. **导入格式增强** — 当前 TXT 导入正则 `(第[一二三四五六七八九十百千万０-９0-9]+[章回节部])` 会遗漏 "序章"、"尾声"、"Chapter 1" 等格式。
 
 ### 中优先级
-3. **大章节性能** — `chapters.content` 为 `TextColumn` 无大小限制，长篇章节可能导致内存问题。可考虑分页加载或惰性加载。
-4. **导入格式增强** — 当前 TXT 导入正则 `(第[一二三四五六七八九十百千万０-９0-9]+[章回节部])` 会遗漏 "序章"、"尾声"、"Chapter 1" 等格式。
-5. **搜索功能** — 缺少全局搜索/替换，对大型作品影响较大。
-6. **书籍删除级联** — `book_dao.dart` 的 `deleteBook` 不会级联删除卷和章节，需要手动处理。
+3. **搜索功能** — 缺少全局搜索/替换，对大型作品影响较大。
+4. **书籍删除级联** — `book_dao.dart` 的 `deleteBook` 不会级联删除卷和章节，需要手动处理。
 
 ### 低优先级
-7. **多语言支持** — 所有 UI 字符串硬编码为中文，未做 i18n。
-8. **日志系统** — 无正式日志框架，`avoid_print` lint 开启但无处输出。
-9. **自动更新** — 无版本检测/更新机制。
-10. **云同步** — 无云端备份/同步功能。
+5. **多语言支持** — 所有 UI 字符串硬编码为中文，未做 i18n。
+6. **日志系统** — 无正式日志框架，`avoid_print` lint 开启但无处输出。
+7. **自动更新** — 无版本检测/更新机制。
+8. **云同步** — 无云端备份/同步功能。
 
 ### 已知限制
 - Windows 独占（Android 和 Web 有配置但未测试）
@@ -217,6 +221,12 @@ flutter build windows --debug
 
 # 代码分析
 flutter analyze
+
+# 运行 DAO 测试
+flutter test test/daos/
+
+# 运行全部测试
+flutter test
 ```
 
 **前置条件**: Flutter 3.27+, Dart 3.6+, Visual Studio 2022 (含 C++ 桌面工作负载), Windows 10/11 64-bit
