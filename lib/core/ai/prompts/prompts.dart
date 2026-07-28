@@ -96,4 +96,66 @@ $content
 - 对话特点
 - 节奏把控手法
 ''';
+
+  /// ===== 大纲系统提示词 =====
+
+  /// 从故事概念生成书籍级大纲
+  static String generateOutline(String storyConcept, {String characters = '', String worldBuilding = ''}) => '''
+请根据以下故事概念，生成一份完整的书籍级大纲。
+
+故事概念：
+$storyConcept
+
+${characters.isNotEmpty ? '主要角色：\n$characters\n' : ''}${worldBuilding.isNotEmpty ? '世界观设定：\n$worldBuilding\n' : ''}
+请以 JSON 格式输出，结构如下：
+[
+  {"title": "第一卷 XXX", "type": "volume", "content": "卷概述", "children": [
+    {"title": "第X章 XXX", "type": "chapter", "content": "章节概要", "children": [
+      {"title": "节标题", "type": "section", "content": "具体内容"},
+      {"title": "剧情节点", "type": "beat", "content": "具体内容"}
+    ]}
+  ]}
+]
+
+要求：
+1. 建议 3-5 卷，每卷 8-15 章
+2. 每章标注核心冲突/爽点
+3. 确保起承转合完整
+4. 角色弧光清晰
+5. 直接输出 JSON，不要额外说明
+''';
+
+  /// 扩写大纲节点
+  static String expandOutlineNode(String title, String currentContent) => '''
+请扩写以下大纲节点，补充更多细节。
+
+节点标题：$title
+${currentContent.isNotEmpty ? '当前内容：\n$currentContent\n' : ''}
+要求：
+1. 展开情节细节，增加场景描写
+2. 补充对话片段和冲突设计
+3. 确保与整体故事风格一致
+4. 输出格式：先简要说明扩写思路，再给出扩写后的完整内容
+''';
+
+  /// 从大纲节点生成章节细纲
+  static String generateChapterOutline(String volumeTitle, String chapterTitle, String context) => '''
+请根据以下卷和章的大纲，生成详细的章节细纲。
+
+所属卷：$volumeTitle
+章节：$chapterTitle
+${context.isNotEmpty ? '上下文信息：\n$context\n' : ''}
+要求：
+1. 将章节拆分为 5-8 个场景/片段
+2. 每个场景给出核心内容、字数建议、爽点
+3. 确保场景之间有流畅过渡
+4. 标注开篇钩子和结尾悬念
+
+输出格式：
+【开篇钩子】...
+【场景1】...（约XXX字）— 爽点：...
+【场景2】...
+...
+【结尾悬念】...
+''';
 }

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../book_analysis/book_analysis_screen.dart';
 import '../character/character_sheet.dart';
+import '../outline/outline_screen.dart';
 import '../settings/settings_screen.dart';
 import '../../core/database/database.dart';
 import '../../core/database/providers.dart';
@@ -220,6 +221,11 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> {
             const PopupMenuItem(value: 'chapter', child: Text('导出当前章节')),
             const PopupMenuItem(value: 'book', child: Text('导出整本书')),
           ],
+        ),
+        IconButton(
+          icon: const Icon(Icons.account_tree_outlined),
+          tooltip: '书籍大纲',
+          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OutlineScreen(bookId: widget.bookId))),
         ),
         IconButton(
           icon: const Icon(Icons.people_outlined),

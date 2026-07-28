@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/database/database.dart';
+
 /// 当前选中的章节 ID
 final selectedChapterProvider = StateProvider<String?>((ref) => null);
 
@@ -57,4 +59,10 @@ class AiChatMessage {
 }
 
 final aiChatMessagesProvider = StateProvider<List<AiChatMessage>>((ref) => []);
+
+/// 大纲编辑器中当前选中的节点
+final selectedOutlineNodeProvider = StateProvider<OutlineNode?>((ref) => null);
+
+/// 大纲树刷新信号
+final outlineTreeRefreshProvider = StateProvider<int>((ref) => 0);
 

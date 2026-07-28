@@ -148,7 +148,7 @@ lib/
 - drift ORM，9 张表，7 个 DAO
 - 数据库文件路径：`getApplicationDocumentsDirectory()/writer_assistant.db`
 - 使用 String UUID 作为主键（`uuid` 包 v4）
-- **注意**: `schemaVersion=2`，`onUpgrade` 已实现 v1→v2 迁移逻辑（12 列新增）。改表时必须同步更新 `schemaVersion` 和 `onUpgrade`
+- **注意**: `schemaVersion=3`，`onUpgrade` 已实现 v1→v2（12 列新增）及 v2→v3（outline_nodes 新增 bookId/status）迁移逻辑。改表时必须同步更新 `schemaVersion` 和 `onUpgrade`
 
 ---
 
@@ -156,7 +156,9 @@ lib/
 
 | 改动 | 说明 |
 |------|------|
-| DAO 单元测试 | 7 个 DAO 共 34 个测试用例全部通过。`AppDatabase` 重构为接受可选 `QueryExecutor` 以支持 `NativeDatabase.memory()` 测试。新增 `sqlite3` dev 依赖 |
+| 书籍大纲系统实现 | 完成步骤 4-8：新增提示词模板、`outline_screen.dart` 三栏页面、工作区入口、AI 面板大纲快捷操作、"生成大纲"概念输入对话框、章纲面板入口 |
+| OutlineDao 测试全覆盖 | 新增 9 个测试覆盖 `getBookRoot`/`getOutlineByBook`/`getOutlineNodesByParent`/`insertOutlineNodes`/`deleteOutlineByBook`，OutlineDao 测试从 4 个增至 13 个 |
+| DAO 单元测试 | 7 个 DAO 共 42 个测试用例全部通过（OutlineDao 新增 9 个书籍级大纲方法测试）。`AppDatabase` 重构为接受可选 `QueryExecutor` 以支持 `NativeDatabase.memory()` 测试。新增 `sqlite3` dev 依赖 |
 | AI 面板滚动闪烁修复 | `_scrollToBottom` 增加 `_isNearBottom` 检查，用户离开底部 50px 时停止自动滚动 |
 | AI 面板字体同步 | AI 面板文字和输入框复用编辑器字体 (`editorFontFamilyProvider`)，跟随用户选择的宋体/楷体/黑体/微软雅黑 |
 | 构建 | `flutter build windows --debug` 成功 |
@@ -353,11 +355,11 @@ IconButton(
 | 1. 数据表改造 | `outline_nodes.dart` — 新增 `bookId`/`status`，保留 `chapterId` NOT NULL（书籍级用 `''` 占位） | ✅ 已完成 |
 | 2. 数据库迁移 | `database.dart` — schemaVersion 3，v2→v3 迁移新增 `bookId`/`status` | ✅ 已完成 |
 | 3. DAO 新增方法 | `outline_dao.dart` — `getBookRoot`/`getOutlineByBook`/`getOutlineNodesByParent`/`insertOutlineNodes`/`deleteOutlineByBook` | ✅ 已完成 |
-| 4. AI 提示词 | `prompts.dart` — 新增 `generateOutline`/`expandOutlineNode`/`generateChapterOutline` 三个模板 | ⬜ 待实现 |
-| 5. 大纲编辑器页面 | `outline_screen.dart` — **新建**，三栏布局（大纲树 \| 编辑器 \| AI 面板） | ⬜ 待实现 |
-| 6. 工作区入口 | `workspace_screen.dart` — AppBar 新增大纲按钮 | ⬜ 待实现 |
-| 7. AI 面板集成 | `ai_panel.dart` — 快捷操作新增大纲相关选项 | ⬜ 待实现 |
-| 8. 单章细纲面板适配 | `outline_panel.dart` — 增加打开书籍大纲的入口 | ⬜ 待实现 |
+| 4. AI 提示词 | `prompts.dart` — 新增 `generateOutline`/`expandOutlineNode`/`generateChapterOutline` 三个模板 | ✅ 已完成 |
+| 5. 大纲编辑器页面 | `outline_screen.dart` — **新建**，三栏布局（大纲树 \| 编辑器 \| AI 面板） | ✅ 已完成 |
+| 6. 工作区入口 | `workspace_screen.dart` — AppBar 新增大纲按钮 | ✅ 已完成 |
+| 7. AI 面板集成 | `ai_panel.dart` — 快捷操作新增大纲相关选项 | ✅ 已完成 |
+| 8. 单章细纲面板适配 | `outline_panel.dart` — 增加打开书籍大纲的入口 | ✅ 已完成 |
 
 #### 6. 涉及文件明细
 

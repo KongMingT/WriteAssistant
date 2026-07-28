@@ -6,6 +6,7 @@ import '../../core/database/database.dart';
 import '../../core/database/providers.dart';
 import '../../core/utils/id_generator.dart';
 import '../workspace/models/selection_state.dart';
+import 'outline_screen.dart';
 
 class OutlinePanel extends ConsumerStatefulWidget {
   const OutlinePanel({super.key});
@@ -41,6 +42,16 @@ class _OutlinePanelState extends ConsumerState<OutlinePanel> {
               Text('章纲', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: theme.colorScheme.primary)),
               if (_currentChapterId != null) ...[
                 const Spacer(),
+                SizedBox(
+                  height: 24,
+                  child: TextButton.icon(
+                    onPressed: _openOutlineScreen,
+                    icon: const Icon(Icons.account_tree_outlined, size: 14),
+                    label: const Text('书籍大纲', style: TextStyle(fontSize: 11)),
+                    style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 6)),
+                  ),
+                ),
+                const SizedBox(width: 4),
                 SizedBox(
                   height: 24,
                   child: TextButton.icon(
@@ -117,6 +128,15 @@ class _OutlinePanelState extends ConsumerState<OutlinePanel> {
         ],
       ),
     );
+  }
+
+  void _openOutlineScreen() {
+    final bookId = ref.read(selectedBookProvider);
+    if (bookId != null && mounted) {
+      Navigator.push(context, MaterialPageRoute(
+        builder: (_) => OutlineScreen(bookId: bookId),
+      ));
+    }
   }
 
   Future<void> _loadNodes(String chapterId) async {

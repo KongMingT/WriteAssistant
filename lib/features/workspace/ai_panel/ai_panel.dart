@@ -281,6 +281,128 @@ class _AiPanelState extends ConsumerState<AiPanel> {
           '要求：不要太过跳脱，要符合当前故事逻辑。',
         ].join('\n'));
         break;
+      // ===== 大纲系统快捷操作 =====
+      case 'generateOutline':
+        await _showGenerateOutlineDialog();
+        break;
+      case 'expandOutlineNode':
+        final outlineNode = ref.read(selectedOutlineNodeProvider);
+        if (outlineNode == null) { _showOutlineHint(); return; }
+        await _sendMessage(AiPrompts.expandOutlineNode(outlineNode.title, outlineNode.content ?? ''));
+        break;
+      case 'polishOutlineNode':
+        final outlineNode2 = ref.read(selectedOutlineNodeProvider);
+        if (outlineNode2 == null) { _showOutlineHint(); return; }
+        await _sendMessage([
+          '请润色以下大纲内容，使其更加清晰有条理、细节丰富、富有吸引力：',
+          '',
+          '标题：${outlineNode2.title}',
+          outlineNode2.content != null && outlineNode2.content!.isNotEmpty ? '\n${outlineNode2.content}' : '',
+        ].join('\n'));
+        break;
+      case 'generateChapterOutline':
+        final outlineNode3 = ref.read(selectedOutlineNodeProvider);
+        if (outlineNode3 == null) { _showOutlineHint(); return; }
+        if (outlineNode3.type != 'chapter') {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请选择一个「章」类型的大纲节点')));
+          return;
+        }
+        await _sendMessage([
+          '请根据以下大纲内容，为章节生成详细的章节细纲（5-8个场景）。',
+          '',
+          '章节标题：${outlineNode3.title}',
+          outlineNode3.content != null && outlineNode3.content!.isNotEmpty ? '章节概要：\n${outlineNode3.content}\n' : '',
+          '要求：',
+          '1. 将章节拆分为 5-8 个场景/片段',
+          '2. 每个场景给出核心内容、字数建议、爽点',
+          '3. 确保场景之间有流畅过渡',
+          '4. 标注开篇钩子和结尾悬念',
+        ].join('\n'));
+        break;
+    }
+  }
+
+  void _showOutlineHint() {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请先在大纲页面中选择一个节点'), duration: Duration(seconds: 2)),
+      );
+    }
+  }
+
+  Future<void> _showGenerateOutlineDialog() async {
+    final conceptCtrl = TextEditingController();
+    final charactersCtrl = TextEditingController();
+    final worldCtrl = TextEditingController();
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('AI 生成大纲'),
+        content: SizedBox(
+          width: 450,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('描述你的故事概念，AI 将生成完整的书籍级大纲。', style: TextStyle(fontSize: 12)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: conceptCtrl,
+                decoration: const InputDecoration(
+                  labelText: '故事概念 *',
+                  hintText: '如：一个现代程序员穿越到修仙世界，凭借编程思维开创全新修炼体系...',
+                  isDense: true,
+                  alignLabelWithHint: true,
+                ),
+                maxLines: 4,
+                autofocus: true,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: charactersCtrl,
+                decoration: const InputDecoration(
+                  labelText: '主要角色（可选）',
+                  hintText: '主角、重要配角的名字和定位',
+                  isDense: true,
+                ),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: worldCtrl,
+                decoration: const InputDecoration(
+                  labelText: '世界观设定（可选）',
+                  hintText: '如：修炼等级体系、势力分布、特殊规则',
+                  isDense: true,
+                ),
+                maxLines: 2,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          FilledButton(
+            onPressed: () {
+              if (conceptCtrl.text.trim().isEmpty) return;
+              Navigator.pop(ctx, true);
+            },
+            child: const Text('生成大纲'),
+          ),
+        ],
+      ),
+    );
+
+    final concept = conceptCtrl.text.trim();
+    final characters = charactersCtrl.text.trim();
+    final world = worldCtrl.text.trim();
+    conceptCtrl.dispose();
+    charactersCtrl.dispose();
+    worldCtrl.dispose();
+
+    if (result == true && concept.isNotEmpty) {
+      await _sendMessage(AiPrompts.generateOutline(concept, characters: characters, worldBuilding: world));
     }
   }
 
@@ -447,6 +569,15 @@ class _AiPanelState extends ConsumerState<AiPanel> {
           const SizedBox(width: 6),
           ActionChip(avatar: const Icon(Icons.auto_stories, size: 14), label: Text('拆书', style: TextStyle(fontSize: 12, fontFamily: fontFamily)), onPressed: () => _quickAction('analyzeBook')),
           ActionChip(avatar: const Icon(Icons.people_outline, size: 14), label: Text('人物', style: TextStyle(fontSize: 12, fontFamily: fontFamily)), onPressed: () => _quickAction('manageCharacters')),
+          if (ref.watch(selectedOutlineNodeProvider) != null) ...[
+            const SizedBox(width: 4),
+            Container(width: 1, height: 20, color: theme.colorScheme.surfaceContainerHighest),
+            const SizedBox(width: 4),
+            ActionChip(avatar: const Icon(Icons.auto_stories, size: 14), label: Text('生成大纲', style: TextStyle(fontSize: 12, fontFamily: fontFamily)), onPressed: () => _quickAction('generateOutline')),
+            ActionChip(avatar: const Icon(Icons.open_in_full, size: 14), label: Text('扩写节点', style: TextStyle(fontSize: 12, fontFamily: fontFamily)), onPressed: () => _quickAction('expandOutlineNode')),
+            ActionChip(avatar: const Icon(Icons.brush, size: 14), label: Text('润色节点', style: TextStyle(fontSize: 12, fontFamily: fontFamily)), onPressed: () => _quickAction('polishOutlineNode')),
+            ActionChip(avatar: const Icon(Icons.list_alt, size: 14), label: Text('生成细纲', style: TextStyle(fontSize: 12, fontFamily: fontFamily)), onPressed: () => _quickAction('generateChapterOutline')),
+          ],
         ],
       ),
     );
