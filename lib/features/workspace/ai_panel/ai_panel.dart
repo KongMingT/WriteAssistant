@@ -1,12 +1,16 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:drift/drift.dart' hide Column;
 
 import '../../../core/ai/ai_client.dart';
 import '../../../core/ai/models/ai_model_config.dart';
 import '../../../core/ai/prompts/prompts.dart';
 import '../../../core/database/database.dart';
 import '../../../core/database/providers.dart';
+import '../../../core/utils/id_generator.dart';
 import '../../../shared/themes/theme_provider.dart';
 import '../../book_analysis/book_analysis_screen.dart';
 import '../../character/character_list_screen.dart';
@@ -403,7 +407,105 @@ class _AiPanelState extends ConsumerState<AiPanel> {
 
     if (result == true && concept.isNotEmpty) {
       await _sendMessage(AiPrompts.generateOutline(concept, characters: characters, worldBuilding: world));
+      if (mounted) {
+        final messages = ref.read(aiChatMessagesProvider);
+        final lastAssistantMsg = messages.where((m) => m.role == 'assistant').lastOrNull;
+        if (lastAssistantMsg != null) {
+          await _tryImportOutline(lastAssistantMsg.content);
+        }
+      }
     }
+  }
+
+  Future<void> _tryImportOutline(String aiResponse) async {
+    final bookId = ref.read(selectedBookProvider);
+    if (bookId == null) return;
+
+    String jsonStr = aiResponse.trim();
+
+    final codeBlockMatch = RegExp(r'```(?:json)?\s*([\s\S]*?)\s*```').firstMatch(jsonStr);
+    if (codeBlockMatch != null) {
+      jsonStr = codeBlockMatch.group(1)!.trim();
+    }
+
+    final jsonStart = jsonStr.indexOf('[');
+    if (jsonStart < 0) return;
+    final jsonEnd = jsonStr.lastIndexOf(']');
+    if (jsonEnd < 0) return;
+    jsonStr = jsonStr.substring(jsonStart, jsonEnd + 1);
+
+    List<dynamic> jsonList;
+    try {
+      jsonList = jsonDecode(jsonStr) as List<dynamic>;
+    } catch (_) {
+      return;
+    }
+    if (jsonList.isEmpty) return;
+
+    final dao = ref.read(outlineDaoProvider);
+    var rootNode = await dao.getBookRoot(bookId);
+    if (rootNode == null) return;
+
+    final companions = _jsonToCompanions(jsonList, bookId, rootNode.id);
+    if (companions.isEmpty) return;
+
+    if (!mounted) return;
+    final totalNodes = companions.length;
+    final volumes = companions.where((c) => c.type.value == 'volume').length;
+    final chapters = companions.where((c) => c.type.value == 'chapter').length;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('导入大纲'),
+        content: Text('AI 生成了 $volumes 卷、$chapters 章，共 $totalNodes 个节点。\n是否导入到大纲编辑器？'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('导入')),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await dao.insertOutlineNodes(companions);
+      ref.read(outlineTreeRefreshProvider.notifier).state++;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('已导入 $totalNodes 个大纲节点'), duration: Duration(seconds: 2)),
+        );
+      }
+    }
+  }
+
+  List<OutlineNodesCompanion> _jsonToCompanions(
+    List<dynamic> jsonList, String bookId, String? parentId,
+  ) {
+    final result = <OutlineNodesCompanion>[];
+    for (int i = 0; i < jsonList.length; i++) {
+      final item = jsonList[i] as Map<String, dynamic>;
+      final id = generateId();
+      final title = item['title'] as String? ?? '';
+      final type = item['type'] as String? ?? 'section';
+      final content = item['content'] as String? ?? '';
+      final children = item['children'] as List<dynamic>? ?? [];
+
+      result.add(OutlineNodesCompanion(
+        id: Value(id),
+        bookId: Value(bookId),
+        chapterId: const Value(''),
+        parentId: Value(parentId),
+        title: Value(title),
+        content: Value(content.isEmpty ? null : content),
+        sortOrder: Value(i),
+        type: Value(type),
+        status: const Value('draft'),
+      ));
+
+      if (children.isNotEmpty) {
+        result.addAll(_jsonToCompanions(children, bookId, id));
+      }
+    }
+    return result;
   }
 
   void _insertToEditor(String text) {
