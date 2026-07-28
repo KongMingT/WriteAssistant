@@ -192,6 +192,53 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     });
   }
 
+  List<Widget> _buildMessageContent(String text, String fontFamily, bool isUser, ThemeData theme) {
+    final baseColor = isUser
+        ? theme.colorScheme.onPrimaryContainer
+        : theme.colorScheme.onSurface;
+
+    final lines = text.split('\n');
+    final List<Widget> widgets = [];
+    bool prevWasBlank = true;
+
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      final trimmed = line.trim();
+
+      if (trimmed.isEmpty) {
+        prevWasBlank = true;
+        continue;
+      }
+
+      if (prevWasBlank && widgets.isNotEmpty) {
+        widgets.add(const SizedBox(height: 8));
+      }
+      prevWasBlank = false;
+
+      final isBold = trimmed.startsWith('**') && trimmed.endsWith('**') && trimmed.length > 4;
+      final fontSize = isBold ? 14.0 : 13.0;
+
+      widgets.add(
+        SelectableText(
+          isBold ? trimmed.substring(2, trimmed.length - 2) : trimmed,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontFamily: fontFamily,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            color: baseColor,
+            height: 1.4,
+          ),
+        ),
+      );
+    }
+
+    if (widgets.isEmpty) {
+      widgets.add(SelectableText(text, style: TextStyle(fontSize: 13, fontFamily: fontFamily, color: baseColor)));
+    }
+
+    return widgets;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -297,7 +344,10 @@ class _AiPanelState extends ConsumerState<AiPanel> {
                           bottomLeft: !isUser ? Radius.zero : null,
                         ),
                       ),
-                      child: Text(msg.content, style: TextStyle(fontSize: 13, fontFamily: fontFamily, color: isUser ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onSurface)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: _buildMessageContent(msg.content, fontFamily, isUser, theme),
+                      ),
                     ),
                   ),
                   if (isUser) ...[
