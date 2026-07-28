@@ -176,6 +176,8 @@ lib/
 | 文件清理 | `workspace_screen.dart` 移除导入 TXT 和新建书籍逻辑（移至首页） |
 | 字数同步修复 | 保存章节后通过 `bookDao.recalculateBookWordCount()` (SQL SUM) 同步更新 `books.wordCount` |
 | 数据库迁移 v1→v2 | 新增 12 列：books(author,status,genre), volumes(updatedAt), character_relations(createdAt), outline_nodes(createdAt,updatedAt), plot_lines(sortOrder,createdAt), plot_nodes(createdAt,updatedAt), writing_sessions(chapterId) |
+| Utf8Decoder 类型错误修复 | `ai_client.dart:85-86` 使用 `.cast<List<int>>()` 包装流类型，修复 `Utf8Decoder` 不兼容 `Stream<Uint8List>` 的问题；增补 `import 'dart:typed_data'` |
+| AI 对话章节上下文选择 | 实现方案详见下节「AI 对话上下文选择」- 新增 `selectedContextChaptersProvider` / `aiContextConfigProvider`，AI面板内嵌多选章节树，设置页可选5/10章上限，状态栏显示选中概要，上下文全局作用于所有消息 |
 
 ---
 
@@ -197,10 +199,18 @@ lib/
 
 ---
 
-## AI 对话上下文选择（规划中）
+## AI 对话上下文选择（已实现）
 
 ### 目标
 在 AI 对话面板中提供一个"多选章节"的 UI，让用户自主选择哪些章节的内容作为 AI 对话的上下文背景，而不是每次都自动塞入当前章节。
+
+### 实现概要
+- `selectedContextChaptersProvider`（`StateProvider<Set<String>>`）存储用户勾选的章节 ID 集合
+- `aiContextConfigProvider`（`StateProvider<AiContextConfig>`）存储配置（上限章节数、字数上限）
+- AI 面板内嵌可折叠的卷→章节树，每章前有 Checkbox
+- 双重阈值：设置页可选 5/10 章上限，固定 20000 字符上限
+- `_buildContext` 方法统一组装选中章节 + 当前编辑章节前 2000 字 + 角色列表，注入所有消息
+- 状态栏显示"已选 N 章"
 
 ### 当前问题
 - `_quickAction`（`ai_panel.dart:112-131`）自动取当前选中章节的前 2000 字作为上下文
@@ -255,7 +265,7 @@ lib/
 
 ---
 
-## Utf8Decoder 类型错误（已知 Bug）
+## Utf8Decoder 类型错误（已修复）
 
 ### 错误信息
 ```
