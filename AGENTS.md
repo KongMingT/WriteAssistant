@@ -196,6 +196,7 @@ lib/
 5. **多语言支持** — 所有 UI 字符串硬编码为中文，未做 i18n。
 6. **日志系统** — 无正式日志框架，`avoid_print` lint 开启但无处输出。
 7. **自动更新** — 无版本检测/更新机制。
+8. **云同步** — 无云端备份/同步功能。
 
 ---
 
@@ -345,20 +346,33 @@ IconButton(
 - 数据独立：`chapterId != null` 的 outline_nodes
 - 与书籍大纲通过 `chapterId` 关联互通
 
-#### 5. 涉及文件
+#### 5. 实现进度
+
+| 步骤 | 文件 | 状态 |
+|------|------|------|
+| 1. 数据表改造 | `outline_nodes.dart` — 新增 `bookId`/`status`，保留 `chapterId` NOT NULL（书籍级用 `''` 占位） | ✅ 已完成 |
+| 2. 数据库迁移 | `database.dart` — schemaVersion 3，v2→v3 迁移新增 `bookId`/`status` | ✅ 已完成 |
+| 3. DAO 新增方法 | `outline_dao.dart` — `getBookRoot`/`getOutlineByBook`/`getOutlineNodesByParent`/`insertOutlineNodes`/`deleteOutlineByBook` | ✅ 已完成 |
+| 4. AI 提示词 | `prompts.dart` — 新增 `generateOutline`/`expandOutlineNode`/`generateChapterOutline` 三个模板 | ⬜ 待实现 |
+| 5. 大纲编辑器页面 | `outline_screen.dart` — **新建**，三栏布局（大纲树 \| 编辑器 \| AI 面板） | ⬜ 待实现 |
+| 6. 工作区入口 | `workspace_screen.dart` — AppBar 新增大纲按钮 | ⬜ 待实现 |
+| 7. AI 面板集成 | `ai_panel.dart` — 快捷操作新增大纲相关选项 | ⬜ 待实现 |
+| 8. 单章细纲面板适配 | `outline_panel.dart` — 增加打开书籍大纲的入口 | ⬜ 待实现 |
+
+#### 6. 涉及文件明细
 
 | 文件 | 改动 |
 |------|------|
-| `lib/core/database/tables/outline_nodes.dart` | 新增 `bookId`、`status` 列；`chapterId` 改为 nullable |
-| `lib/core/database/database.dart` | schemaVersion 3 → 4，新增 onUpgrade v3→v4 迁移 |
-| `lib/core/database/daos/outline_dao.dart` | 新增 `getOutlineByBook`、`getOutlineByBookAndParent` |
+| `lib/core/database/tables/outline_nodes.dart` | 新增 `bookId`、`status` 列；`chapterId` 保持 NOT NULL（书籍级节点使用 `''` 占位） |
+| `lib/core/database/database.dart` | schemaVersion 2 → 3，新增 onUpgrade v2→v3 迁移（addColumn bookId + status） |
+| `lib/core/database/daos/outline_dao.dart` | 新增 `getBookRoot`、`getOutlineByBook`、`getOutlineNodesByParent`、`insertOutlineNodes`（批量）、`deleteOutlineByBook` |
 | `lib/core/ai/prompts/prompts.dart` | 新增 outline 生成/扩写/润色提示词 |
 | `lib/features/outline/outline_screen.dart` | **新建**：大纲编辑器主页面（三栏） |
 | `lib/features/outline/outline_panel.dart` | 保留单章细纲面板，增加打开书籍大纲的入口 |
 | `lib/features/workspace/workspace_screen.dart` | AppBar 新增大纲按钮 |
 | `lib/features/workspace/ai_panel/ai_panel.dart` | 快捷操作新增大纲相关选项 |
 
-#### 6. 边界 & 注意事项
+#### 7. 边界 & 注意事项
 
 1. **数据一致性**：书籍大纲节点删除时，如果已关联章节，提示用户解除关联
 2. **AI 输出容错**：AI 返回格式可能不完整，前端需有容错和手动修复 UI
@@ -366,7 +380,6 @@ IconButton(
 4. **多用户协作**：当前无此需求，但 `outline_nodes` 有 `createdAt`/`updatedAt` 为未来预留
 5. **持久化 vs 暂存**：AI 生成的草稿自动保存到 `outline_nodes`（`status=draft`），用户确认后标记 `final`
 6. **与编辑器的联动**：大纲节点生成章节细纲时，批量创建 `outline_nodes`（`chapterId=章节ID`），编辑器内的大纲面板自动刷新
-8. **云同步** — 无云端备份/同步功能。
 
 ---
 
