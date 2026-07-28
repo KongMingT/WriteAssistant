@@ -49,3 +49,12 @@ class AiContextConfig {
 
 final aiContextConfigProvider = StateProvider<AiContextConfig>((ref) => const AiContextConfig());
 
+/// AI 对话消息（持久化，跨面板生命周期）
+class AiChatMessage {
+  final String role;
+  final String content;
+  const AiChatMessage({required this.role, required this.content});
+}
+
+final aiChatMessagesProvider = StateProvider<List<AiChatMessage>>((ref) => []);
+
