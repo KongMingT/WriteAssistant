@@ -156,6 +156,7 @@ lib/
 
 | 改动 | 说明 |
 |------|------|
+| AI 生成大纲结果入库 | `_tryImportOutline` 解析 AI 返回的 JSON 大纲，递归生成 `OutlineNodesCompanion`，确认对话框后批量插入 `outline_nodes` 表，刷新大纲树 |
 | 书籍大纲系统实现 | 完成步骤 4-8：新增提示词模板、`outline_screen.dart` 三栏页面、工作区入口、AI 面板大纲快捷操作、"生成大纲"概念输入对话框、章纲面板入口 |
 | OutlineDao 测试全覆盖 | 新增 9 个测试覆盖 `getBookRoot`/`getOutlineByBook`/`getOutlineNodesByParent`/`insertOutlineNodes`/`deleteOutlineByBook`，OutlineDao 测试从 4 个增至 13 个 |
 | DAO 单元测试 | 7 个 DAO 共 42 个测试用例全部通过（OutlineDao 新增 9 个书籍级大纲方法测试）。`AppDatabase` 重构为接受可选 `QueryExecutor` 以支持 `NativeDatabase.memory()` 测试。新增 `sqlite3` dev 依赖 |
@@ -377,7 +378,7 @@ IconButton(
 #### 7. 边界 & 注意事项
 
 1. **数据一致性**：书籍大纲节点删除时，如果已关联章节，提示用户解除关联
-2. **AI 输出容错**：AI 返回格式可能不完整，前端需有容错和手动修复 UI
+2. **AI 输出容错**：AI 返回格式可能不完整，前端已实现 JSON 提取与解析容错，解析失败时仍可在对话区手动复制使用
 3. **大篇幅性能**：上百节点的大纲树建议按需加载（懒展开）
 4. **多用户协作**：当前无此需求，但 `outline_nodes` 有 `createdAt`/`updatedAt` 为未来预留
 5. **持久化 vs 暂存**：AI 生成的草稿自动保存到 `outline_nodes`（`status=draft`），用户确认后标记 `final`
