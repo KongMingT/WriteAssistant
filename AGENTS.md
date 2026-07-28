@@ -178,6 +178,7 @@ lib/
 | 数据库迁移 v1→v2 | 新增 12 列：books(author,status,genre), volumes(updatedAt), character_relations(createdAt), outline_nodes(createdAt,updatedAt), plot_lines(sortOrder,createdAt), plot_nodes(createdAt,updatedAt), writing_sessions(chapterId) |
 | Utf8Decoder 类型错误修复 | `ai_client.dart:85-86` 使用 `.cast<List<int>>()` 包装流类型，修复 `Utf8Decoder` 不兼容 `Stream<Uint8List>` 的问题；增补 `import 'dart:typed_data'` |
 | AI 对话章节上下文选择 | 实现方案详见下节「AI 对话上下文选择」- 新增 `selectedContextChaptersProvider` / `aiContextConfigProvider`，AI面板内嵌多选章节树，设置页可选5/10章上限，状态栏显示选中概要，上下文全局作用于所有消息 |
+| 数据库迁移 v2→v3 (大纲系统) | `outline_nodes` 新增 `bookId`/`status` 列，`type` 默认值保留，`chapterId` 保持 NOT NULL（书籍级节点使用空字符串 `''` 占位兼容迁移）；`OutlineDao` 新增 `getBookRoot`/`getOutlineByBook`/`getOutlineNodesByParent`/`insertOutlineNodes` 批量方法；`schemaVersion` 3，`onUpgrade` v2→v3 添加 `bookId` 和 `status` 列 |
 
 ---
 
@@ -195,6 +196,176 @@ lib/
 5. **多语言支持** — 所有 UI 字符串硬编码为中文，未做 i18n。
 6. **日志系统** — 无正式日志框架，`avoid_print` lint 开启但无处输出。
 7. **自动更新** — 无版本检测/更新机制。
+
+---
+
+## 书籍大纲系统（下一阶段重点开发）
+
+### 目标
+构建一套完整的**书籍级大纲系统**，支持创作/管理/编辑/导出，与 AI 深度集成。
+
+### 当前现状与问题
+
+| 维度 | 现状 | 问题 |
+|------|------|------|
+| 数据结构 | `outline_nodes` 表仅绑定 `chapterId`，无书籍级大纲概念 | 无法管理整本书的结构骨架 |
+| 层级 | `parentId` 字段存在但 UI 未使用 | 单层拍平，无卷→章→节树形结构 |
+| 编辑 UI | `OutlinePanel` 嵌入在编辑器中，只显示当前章的单章大纲 | 不能以书籍视角概览全局 |
+| AI 生成 | "大纲梳理"快捷操作仅生成文本到对话区，不落地 | AI 结果与数据库脱节，无法迭代编辑 |
+| 用户补充 | 无独立页面，所有操作局限于弹窗 | 书写长纲体验差 |
+
+### 设计
+
+#### 1. 数据模型（数据库迁移 → schemaVersion 3）
+
+**`outline_nodes` 表改造：**
+
+| 列 | 变更 | 说明 |
+|----|------|------|
+| `bookId` | **新增**，`text().nullable().references(Books, #id)()` | 书籍级大纲根节点用 |
+| `chapterId` | 现有（NOT NULL），书籍级节点使用空字符串 `''` 占位 | 迁移兼容：SQLite 不支持 ALTER COLUMN 移除 NOT NULL；细纲链接到章节用真实 chapterId |
+| `parentId` | 现有（nullable），**启用层级 UI** | 卷→章→节，支持无限嵌套 |
+| `type` | 现有，扩展值 `'book_root' \| 'volume' \| 'chapter' \| 'section' \| 'beat'` | 标识节点类型 |
+| `title` | 现有 | 节点标题（如"第一卷 少年崛起"、"第1章 穿越"） |
+| `content` | 现有 | 节点内容描述 |
+| `sortOrder` | 现有 | 同级排序 |
+| `status` | **新增**，`text().withDefault('draft')` | `draft \| final` |
+
+**关系模型：**
+```
+Book (1) ──→ OutlineNode (N, bookId)
+  ├── type='volume' (卷)
+  │   ├── type='chapter' (章)
+  │   │   ├── type='section' (节)
+  │   │   └── type='beat' (剧情节拍)
+  │   └── ...
+  └── type='book_root' (书籍概要，单条)
+```
+
+**查询原则：**
+- 加载大纲：`bookId == X AND chapterId IS NULL`，按 `sortOrder` 排序
+- 加载单章细纲：`chapterId == X`，关联到编辑器大纲面板
+- 二者通过 `outline_nodes.type` 区分：`'book_root'/'volume'/'chapter'` vs `'section'/'beat'`
+
+#### 2. 新增页面：`outline_screen.dart`
+
+**路由**: `Navigator.push → OutlineScreen(bookId)`，从工作区 AppBar 大纲按钮进入
+
+**布局**（仿三栏但有区别）：
+```
+┌─────────────────────────────────────────────────────────┐
+│  AppBar: 《书名》- 大纲管理  [返回]  [保存]  [导出]     │
+├────────────┬─────────────────────────┬───────────────────┤
+│  左侧大纲树  │    中间编辑器区域         │  右侧 AI 面板      │
+│  (卷→章→节) │  ┌─────────────────┐   │  (与工作区 AI 面板  │
+│            │  │  节点标题 (可编辑)  │   │   共享 Provider)   │
+│  右击菜单：  │  ├─────────────────┤   │                   │
+│  添加子节点  │  │  节点内容 (可编辑)  │   │  AI 快捷操作：     │
+│  添加同级    │  ├─────────────────┤   │  · 生成大纲(从概念) │
+│  删除       │  │  字数/状态/关联章节 │   │  · 扩写选中节点   │
+│  展开/折叠   │  └─────────────────┘   │  · 润色当前节点   │
+│            │                          │  · 生成细纲→章节  │
+│            │                          │                   │
+├────────────┴─────────────────────────┴───────────────────┤
+│  底部状态栏: 总节点数 / 已定稿数 / 进度百分比            │
+└─────────────────────────────────────────────────────────┘
+```
+
+**左侧大纲树结构:**
+- 顶层显示书名（根节点，不可删除）
+- 子节点按 `sortOrder` 排列
+- 缩进 + 图标区分类型（卷=📂 章=📄 节=📝 剧情节拍=⚡）
+- 选中节点 → 中间编辑区显示详情
+- 拖拽排序（可选）
+
+**中间编辑区:**
+- `title`：TextField，实时保存（500ms 防抖）
+- `content`：TextField（多行），实时保存（3s 防抖）
+- 元信息：类型标签、字数、关联章节（可选）
+- 关联章节：下拉选择该卷下的章节，建立 `chapterId` 关联
+
+#### 3. AI 集成
+
+**新增提示词模板（`prompts.dart`）:**
+
+```dart
+/// 从故事概念生成书籍级大纲
+static String generateOutline(String storyConcept, {String characters = '', String worldBuilding = ''})
+
+/// 扩写大纲节点
+static String expandOutlineNode(String title, String currentContent)
+
+/// 从大纲节点生成章节细纲
+static String generateChapterOutline(String volumeTitle, String chapterTitle, String context)
+```
+
+**AI 面板快捷操作（大纲专属）：**
+
+| 操作 | 触发 | 组装上下文 |
+|------|------|-----------|
+| 生成大纲 | 用户填写故事概念，点击"AI 生成" | 概念文本 + 角色列表 + 设定 |
+| 扩写选中节点 | 选中一个节点 | 节点标题/内容 + 父级上下文 |
+| 润色节点 | 选中一个节点 | 节点内容 + AI 润色指令 |
+| 生成细纲→章节 | 选中一个章节节点 | 卷+章大纲 + 角色列表 → 写入章节 |
+
+**上下文注入**：复用 `_buildContext()` 逻辑，自动携带选中的上下文章节 + 角色列表。
+
+**输出解析**：
+AI 返回格式约定为 JSON/结构化 Markdown，前端解析后转换为 `outline_nodes` 行批量插入。
+
+```json
+[
+  {"title": "第一卷 少年崛起", "type": "volume", "children": [
+    {"title": "第1章 穿越异世", "type": "chapter", "content": "主角意外穿越...", "children": [
+      {"title": "穿越醒来", "type": "section", "content": "主角发现身处山林..."},
+      {"title": "获得系统", "type": "beat", "content": "金手指激活，获得新手礼包"}
+    ]},
+    {"title": "第2章 初露锋芒", "type": "chapter", ...}
+  ]}
+]
+```
+
+#### 4. 工作区整合
+
+**AppBar 新增大纲按钮**（`workspace_screen.dart`）：
+```
+IconButton(
+  icon: Icon(Icons.account_tree_outlined),
+  tooltip: '书籍大纲',
+  onPressed: () => Navigator.push(context, MaterialPageRoute(
+    builder: (_) => OutlineScreen(bookId: widget.bookId),
+  )),
+)
+```
+
+放置于人物管理按钮之前。
+
+**现有 `OutlinePanel` 保留**：
+- 仍作为编辑器内嵌的"单章细纲面板"
+- 数据独立：`chapterId != null` 的 outline_nodes
+- 与书籍大纲通过 `chapterId` 关联互通
+
+#### 5. 涉及文件
+
+| 文件 | 改动 |
+|------|------|
+| `lib/core/database/tables/outline_nodes.dart` | 新增 `bookId`、`status` 列；`chapterId` 改为 nullable |
+| `lib/core/database/database.dart` | schemaVersion 3 → 4，新增 onUpgrade v3→v4 迁移 |
+| `lib/core/database/daos/outline_dao.dart` | 新增 `getOutlineByBook`、`getOutlineByBookAndParent` |
+| `lib/core/ai/prompts/prompts.dart` | 新增 outline 生成/扩写/润色提示词 |
+| `lib/features/outline/outline_screen.dart` | **新建**：大纲编辑器主页面（三栏） |
+| `lib/features/outline/outline_panel.dart` | 保留单章细纲面板，增加打开书籍大纲的入口 |
+| `lib/features/workspace/workspace_screen.dart` | AppBar 新增大纲按钮 |
+| `lib/features/workspace/ai_panel/ai_panel.dart` | 快捷操作新增大纲相关选项 |
+
+#### 6. 边界 & 注意事项
+
+1. **数据一致性**：书籍大纲节点删除时，如果已关联章节，提示用户解除关联
+2. **AI 输出容错**：AI 返回格式可能不完整，前端需有容错和手动修复 UI
+3. **大篇幅性能**：上百节点的大纲树建议按需加载（懒展开）
+4. **多用户协作**：当前无此需求，但 `outline_nodes` 有 `createdAt`/`updatedAt` 为未来预留
+5. **持久化 vs 暂存**：AI 生成的草稿自动保存到 `outline_nodes`（`status=draft`），用户确认后标记 `final`
+6. **与编辑器的联动**：大纲节点生成章节细纲时，批量创建 `outline_nodes`（`chapterId=章节ID`），编辑器内的大纲面板自动刷新
 8. **云同步** — 无云端备份/同步功能。
 
 ---

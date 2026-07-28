@@ -1328,6 +1328,14 @@ class $OutlineNodesTable extends OutlineNodes
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
       'id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _bookIdMeta = const VerificationMeta('bookId');
+  @override
+  late final GeneratedColumn<String> bookId = GeneratedColumn<String>(
+      'book_id', aliasedName, true,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES books (id)'));
   static const VerificationMeta _chapterIdMeta =
       const VerificationMeta('chapterId');
   @override
@@ -1367,6 +1375,13 @@ class $OutlineNodesTable extends OutlineNodes
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('outline'));
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('draft'));
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -1382,12 +1397,14 @@ class $OutlineNodesTable extends OutlineNodes
   @override
   List<GeneratedColumn> get $columns => [
         id,
+        bookId,
         chapterId,
         parentId,
         title,
         content,
         sortOrder,
         type,
+        status,
         createdAt,
         updatedAt
       ];
@@ -1405,6 +1422,10 @@ class $OutlineNodesTable extends OutlineNodes
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
+    }
+    if (data.containsKey('book_id')) {
+      context.handle(_bookIdMeta,
+          bookId.isAcceptableOrUnknown(data['book_id']!, _bookIdMeta));
     }
     if (data.containsKey('chapter_id')) {
       context.handle(_chapterIdMeta,
@@ -1436,6 +1457,10 @@ class $OutlineNodesTable extends OutlineNodes
       context.handle(
           _typeMeta, type.isAcceptableOrUnknown(data['type']!, _typeMeta));
     }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -1455,6 +1480,8 @@ class $OutlineNodesTable extends OutlineNodes
     return OutlineNode(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      bookId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}book_id']),
       chapterId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}chapter_id'])!,
       parentId: attachedDatabase.typeMapping
@@ -1467,6 +1494,8 @@ class $OutlineNodesTable extends OutlineNodes
           .read(DriftSqlType.int, data['${effectivePrefix}sort_order'])!,
       type: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}type'])!,
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at']),
       updatedAt: attachedDatabase.typeMapping
@@ -1482,28 +1511,35 @@ class $OutlineNodesTable extends OutlineNodes
 
 class OutlineNode extends DataClass implements Insertable<OutlineNode> {
   final String id;
+  final String? bookId;
   final String chapterId;
   final String? parentId;
   final String title;
   final String? content;
   final int sortOrder;
   final String type;
+  final String status;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   const OutlineNode(
       {required this.id,
+      this.bookId,
       required this.chapterId,
       this.parentId,
       required this.title,
       this.content,
       required this.sortOrder,
       required this.type,
+      required this.status,
       this.createdAt,
       this.updatedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
+    if (!nullToAbsent || bookId != null) {
+      map['book_id'] = Variable<String>(bookId);
+    }
     map['chapter_id'] = Variable<String>(chapterId);
     if (!nullToAbsent || parentId != null) {
       map['parent_id'] = Variable<String>(parentId);
@@ -1514,6 +1550,7 @@ class OutlineNode extends DataClass implements Insertable<OutlineNode> {
     }
     map['sort_order'] = Variable<int>(sortOrder);
     map['type'] = Variable<String>(type);
+    map['status'] = Variable<String>(status);
     if (!nullToAbsent || createdAt != null) {
       map['created_at'] = Variable<DateTime>(createdAt);
     }
@@ -1526,6 +1563,8 @@ class OutlineNode extends DataClass implements Insertable<OutlineNode> {
   OutlineNodesCompanion toCompanion(bool nullToAbsent) {
     return OutlineNodesCompanion(
       id: Value(id),
+      bookId:
+          bookId == null && nullToAbsent ? const Value.absent() : Value(bookId),
       chapterId: Value(chapterId),
       parentId: parentId == null && nullToAbsent
           ? const Value.absent()
@@ -1536,6 +1575,7 @@ class OutlineNode extends DataClass implements Insertable<OutlineNode> {
           : Value(content),
       sortOrder: Value(sortOrder),
       type: Value(type),
+      status: Value(status),
       createdAt: createdAt == null && nullToAbsent
           ? const Value.absent()
           : Value(createdAt),
@@ -1550,12 +1590,14 @@ class OutlineNode extends DataClass implements Insertable<OutlineNode> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return OutlineNode(
       id: serializer.fromJson<String>(json['id']),
+      bookId: serializer.fromJson<String?>(json['bookId']),
       chapterId: serializer.fromJson<String>(json['chapterId']),
       parentId: serializer.fromJson<String?>(json['parentId']),
       title: serializer.fromJson<String>(json['title']),
       content: serializer.fromJson<String?>(json['content']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       type: serializer.fromJson<String>(json['type']),
+      status: serializer.fromJson<String>(json['status']),
       createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
     );
@@ -1565,12 +1607,14 @@ class OutlineNode extends DataClass implements Insertable<OutlineNode> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
+      'bookId': serializer.toJson<String?>(bookId),
       'chapterId': serializer.toJson<String>(chapterId),
       'parentId': serializer.toJson<String?>(parentId),
       'title': serializer.toJson<String>(title),
       'content': serializer.toJson<String?>(content),
       'sortOrder': serializer.toJson<int>(sortOrder),
       'type': serializer.toJson<String>(type),
+      'status': serializer.toJson<String>(status),
       'createdAt': serializer.toJson<DateTime?>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
     };
@@ -1578,34 +1622,40 @@ class OutlineNode extends DataClass implements Insertable<OutlineNode> {
 
   OutlineNode copyWith(
           {String? id,
+          Value<String?> bookId = const Value.absent(),
           String? chapterId,
           Value<String?> parentId = const Value.absent(),
           String? title,
           Value<String?> content = const Value.absent(),
           int? sortOrder,
           String? type,
+          String? status,
           Value<DateTime?> createdAt = const Value.absent(),
           Value<DateTime?> updatedAt = const Value.absent()}) =>
       OutlineNode(
         id: id ?? this.id,
+        bookId: bookId.present ? bookId.value : this.bookId,
         chapterId: chapterId ?? this.chapterId,
         parentId: parentId.present ? parentId.value : this.parentId,
         title: title ?? this.title,
         content: content.present ? content.value : this.content,
         sortOrder: sortOrder ?? this.sortOrder,
         type: type ?? this.type,
+        status: status ?? this.status,
         createdAt: createdAt.present ? createdAt.value : this.createdAt,
         updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
       );
   OutlineNode copyWithCompanion(OutlineNodesCompanion data) {
     return OutlineNode(
       id: data.id.present ? data.id.value : this.id,
+      bookId: data.bookId.present ? data.bookId.value : this.bookId,
       chapterId: data.chapterId.present ? data.chapterId.value : this.chapterId,
       parentId: data.parentId.present ? data.parentId.value : this.parentId,
       title: data.title.present ? data.title.value : this.title,
       content: data.content.present ? data.content.value : this.content,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       type: data.type.present ? data.type.value : this.type,
+      status: data.status.present ? data.status.value : this.status,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1615,12 +1665,14 @@ class OutlineNode extends DataClass implements Insertable<OutlineNode> {
   String toString() {
     return (StringBuffer('OutlineNode(')
           ..write('id: $id, ')
+          ..write('bookId: $bookId, ')
           ..write('chapterId: $chapterId, ')
           ..write('parentId: $parentId, ')
           ..write('title: $title, ')
           ..write('content: $content, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('type: $type, ')
+          ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1628,54 +1680,62 @@ class OutlineNode extends DataClass implements Insertable<OutlineNode> {
   }
 
   @override
-  int get hashCode => Object.hash(id, chapterId, parentId, title, content,
-      sortOrder, type, createdAt, updatedAt);
+  int get hashCode => Object.hash(id, bookId, chapterId, parentId, title,
+      content, sortOrder, type, status, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is OutlineNode &&
           other.id == this.id &&
+          other.bookId == this.bookId &&
           other.chapterId == this.chapterId &&
           other.parentId == this.parentId &&
           other.title == this.title &&
           other.content == this.content &&
           other.sortOrder == this.sortOrder &&
           other.type == this.type &&
+          other.status == this.status &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
 
 class OutlineNodesCompanion extends UpdateCompanion<OutlineNode> {
   final Value<String> id;
+  final Value<String?> bookId;
   final Value<String> chapterId;
   final Value<String?> parentId;
   final Value<String> title;
   final Value<String?> content;
   final Value<int> sortOrder;
   final Value<String> type;
+  final Value<String> status;
   final Value<DateTime?> createdAt;
   final Value<DateTime?> updatedAt;
   final Value<int> rowid;
   const OutlineNodesCompanion({
     this.id = const Value.absent(),
+    this.bookId = const Value.absent(),
     this.chapterId = const Value.absent(),
     this.parentId = const Value.absent(),
     this.title = const Value.absent(),
     this.content = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.type = const Value.absent(),
+    this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   OutlineNodesCompanion.insert({
     required String id,
+    this.bookId = const Value.absent(),
     required String chapterId,
     this.parentId = const Value.absent(),
     required String title,
     this.content = const Value.absent(),
     required int sortOrder,
     this.type = const Value.absent(),
+    this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1685,24 +1745,28 @@ class OutlineNodesCompanion extends UpdateCompanion<OutlineNode> {
         sortOrder = Value(sortOrder);
   static Insertable<OutlineNode> custom({
     Expression<String>? id,
+    Expression<String>? bookId,
     Expression<String>? chapterId,
     Expression<String>? parentId,
     Expression<String>? title,
     Expression<String>? content,
     Expression<int>? sortOrder,
     Expression<String>? type,
+    Expression<String>? status,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (bookId != null) 'book_id': bookId,
       if (chapterId != null) 'chapter_id': chapterId,
       if (parentId != null) 'parent_id': parentId,
       if (title != null) 'title': title,
       if (content != null) 'content': content,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (type != null) 'type': type,
+      if (status != null) 'status': status,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -1711,23 +1775,27 @@ class OutlineNodesCompanion extends UpdateCompanion<OutlineNode> {
 
   OutlineNodesCompanion copyWith(
       {Value<String>? id,
+      Value<String?>? bookId,
       Value<String>? chapterId,
       Value<String?>? parentId,
       Value<String>? title,
       Value<String?>? content,
       Value<int>? sortOrder,
       Value<String>? type,
+      Value<String>? status,
       Value<DateTime?>? createdAt,
       Value<DateTime?>? updatedAt,
       Value<int>? rowid}) {
     return OutlineNodesCompanion(
       id: id ?? this.id,
+      bookId: bookId ?? this.bookId,
       chapterId: chapterId ?? this.chapterId,
       parentId: parentId ?? this.parentId,
       title: title ?? this.title,
       content: content ?? this.content,
       sortOrder: sortOrder ?? this.sortOrder,
       type: type ?? this.type,
+      status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -1739,6 +1807,9 @@ class OutlineNodesCompanion extends UpdateCompanion<OutlineNode> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<String>(id.value);
+    }
+    if (bookId.present) {
+      map['book_id'] = Variable<String>(bookId.value);
     }
     if (chapterId.present) {
       map['chapter_id'] = Variable<String>(chapterId.value);
@@ -1758,6 +1829,9 @@ class OutlineNodesCompanion extends UpdateCompanion<OutlineNode> {
     if (type.present) {
       map['type'] = Variable<String>(type.value);
     }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1774,12 +1848,14 @@ class OutlineNodesCompanion extends UpdateCompanion<OutlineNode> {
   String toString() {
     return (StringBuffer('OutlineNodesCompanion(')
           ..write('id: $id, ')
+          ..write('bookId: $bookId, ')
           ..write('chapterId: $chapterId, ')
           ..write('parentId: $parentId, ')
           ..write('title: $title, ')
           ..write('content: $content, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('type: $type, ')
+          ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -4051,6 +4127,20 @@ final class $$BooksTableReferences
         manager.$state.copyWith(prefetchedData: cache));
   }
 
+  static MultiTypedResultKey<$OutlineNodesTable, List<OutlineNode>>
+      _outlineNodesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+          db.outlineNodes,
+          aliasName: $_aliasNameGenerator(db.books.id, db.outlineNodes.bookId));
+
+  $$OutlineNodesTableProcessedTableManager get outlineNodesRefs {
+    final manager = $$OutlineNodesTableTableManager($_db, $_db.outlineNodes)
+        .filter((f) => f.bookId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_outlineNodesRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
   static MultiTypedResultKey<$CharactersTable, List<Character>>
       _charactersRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
           db.characters,
@@ -4165,6 +4255,27 @@ class $$BooksTableFilterComposer extends Composer<_$AppDatabase, $BooksTable> {
             $$VolumesTableFilterComposer(
               $db: $db,
               $table: $db.volumes,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> outlineNodesRefs(
+      Expression<bool> Function($$OutlineNodesTableFilterComposer f) f) {
+    final $$OutlineNodesTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.outlineNodes,
+        getReferencedColumn: (t) => t.bookId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$OutlineNodesTableFilterComposer(
+              $db: $db,
+              $table: $db.outlineNodes,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -4358,6 +4469,27 @@ class $$BooksTableAnnotationComposer
     return f(composer);
   }
 
+  Expression<T> outlineNodesRefs<T extends Object>(
+      Expression<T> Function($$OutlineNodesTableAnnotationComposer a) f) {
+    final $$OutlineNodesTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.outlineNodes,
+        getReferencedColumn: (t) => t.bookId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$OutlineNodesTableAnnotationComposer(
+              $db: $db,
+              $table: $db.outlineNodes,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
   Expression<T> charactersRefs<T extends Object>(
       Expression<T> Function($$CharactersTableAnnotationComposer a) f) {
     final $$CharactersTableAnnotationComposer composer = $composerBuilder(
@@ -4457,6 +4589,7 @@ class $$BooksTableTableManager extends RootTableManager<
     Book,
     PrefetchHooks Function(
         {bool volumesRefs,
+        bool outlineNodesRefs,
         bool charactersRefs,
         bool characterRelationsRefs,
         bool plotLinesRefs,
@@ -4529,6 +4662,7 @@ class $$BooksTableTableManager extends RootTableManager<
               .toList(),
           prefetchHooksCallback: (
               {volumesRefs = false,
+              outlineNodesRefs = false,
               charactersRefs = false,
               characterRelationsRefs = false,
               plotLinesRefs = false,
@@ -4537,6 +4671,7 @@ class $$BooksTableTableManager extends RootTableManager<
               db: db,
               explicitlyWatchedTables: [
                 if (volumesRefs) db.volumes,
+                if (outlineNodesRefs) db.outlineNodes,
                 if (charactersRefs) db.characters,
                 if (characterRelationsRefs) db.characterRelations,
                 if (plotLinesRefs) db.plotLines,
@@ -4552,6 +4687,18 @@ class $$BooksTableTableManager extends RootTableManager<
                             $$BooksTableReferences._volumesRefsTable(db),
                         managerFromTypedResult: (p0) =>
                             $$BooksTableReferences(db, table, p0).volumesRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.bookId == item.id),
+                        typedResults: items),
+                  if (outlineNodesRefs)
+                    await $_getPrefetchedData<Book, $BooksTable, OutlineNode>(
+                        currentTable: table,
+                        referencedTable:
+                            $$BooksTableReferences._outlineNodesRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$BooksTableReferences(db, table, p0)
+                                .outlineNodesRefs,
                         referencedItemsForCurrentItem: (item,
                                 referencedItems) =>
                             referencedItems.where((e) => e.bookId == item.id),
@@ -4625,6 +4772,7 @@ typedef $$BooksTableProcessedTableManager = ProcessedTableManager<
     Book,
     PrefetchHooks Function(
         {bool volumesRefs,
+        bool outlineNodesRefs,
         bool charactersRefs,
         bool characterRelationsRefs,
         bool plotLinesRefs,
@@ -5544,12 +5692,14 @@ typedef $$ChaptersTableProcessedTableManager = ProcessedTableManager<
 typedef $$OutlineNodesTableCreateCompanionBuilder = OutlineNodesCompanion
     Function({
   required String id,
+  Value<String?> bookId,
   required String chapterId,
   Value<String?> parentId,
   required String title,
   Value<String?> content,
   required int sortOrder,
   Value<String> type,
+  Value<String> status,
   Value<DateTime?> createdAt,
   Value<DateTime?> updatedAt,
   Value<int> rowid,
@@ -5557,12 +5707,14 @@ typedef $$OutlineNodesTableCreateCompanionBuilder = OutlineNodesCompanion
 typedef $$OutlineNodesTableUpdateCompanionBuilder = OutlineNodesCompanion
     Function({
   Value<String> id,
+  Value<String?> bookId,
   Value<String> chapterId,
   Value<String?> parentId,
   Value<String> title,
   Value<String?> content,
   Value<int> sortOrder,
   Value<String> type,
+  Value<String> status,
   Value<DateTime?> createdAt,
   Value<DateTime?> updatedAt,
   Value<int> rowid,
@@ -5571,6 +5723,20 @@ typedef $$OutlineNodesTableUpdateCompanionBuilder = OutlineNodesCompanion
 final class $$OutlineNodesTableReferences
     extends BaseReferences<_$AppDatabase, $OutlineNodesTable, OutlineNode> {
   $$OutlineNodesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $BooksTable _bookIdTable(_$AppDatabase db) => db.books
+      .createAlias($_aliasNameGenerator(db.outlineNodes.bookId, db.books.id));
+
+  $$BooksTableProcessedTableManager? get bookId {
+    final $_column = $_itemColumn<String>('book_id');
+    if ($_column == null) return null;
+    final manager = $$BooksTableTableManager($_db, $_db.books)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_bookIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
 
   static $ChaptersTable _chapterIdTable(_$AppDatabase db) =>
       db.chapters.createAlias(
@@ -5615,11 +5781,34 @@ class $$OutlineNodesTableFilterComposer
   ColumnFilters<String> get type => $composableBuilder(
       column: $table.type, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  $$BooksTableFilterComposer get bookId {
+    final $$BooksTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.bookId,
+        referencedTable: $db.books,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$BooksTableFilterComposer(
+              $db: $db,
+              $table: $db.books,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 
   $$ChaptersTableFilterComposer get chapterId {
     final $$ChaptersTableFilterComposer composer = $composerBuilder(
@@ -5669,11 +5858,34 @@ class $$OutlineNodesTableOrderingComposer
   ColumnOrderings<String> get type => $composableBuilder(
       column: $table.type, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  $$BooksTableOrderingComposer get bookId {
+    final $$BooksTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.bookId,
+        referencedTable: $db.books,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$BooksTableOrderingComposer(
+              $db: $db,
+              $table: $db.books,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 
   $$ChaptersTableOrderingComposer get chapterId {
     final $$ChaptersTableOrderingComposer composer = $composerBuilder(
@@ -5723,11 +5935,34 @@ class $$OutlineNodesTableAnnotationComposer
   GeneratedColumn<String> get type =>
       $composableBuilder(column: $table.type, builder: (column) => column);
 
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$BooksTableAnnotationComposer get bookId {
+    final $$BooksTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.bookId,
+        referencedTable: $db.books,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$BooksTableAnnotationComposer(
+              $db: $db,
+              $table: $db.books,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 
   $$ChaptersTableAnnotationComposer get chapterId {
     final $$ChaptersTableAnnotationComposer composer = $composerBuilder(
@@ -5761,7 +5996,7 @@ class $$OutlineNodesTableTableManager extends RootTableManager<
     $$OutlineNodesTableUpdateCompanionBuilder,
     (OutlineNode, $$OutlineNodesTableReferences),
     OutlineNode,
-    PrefetchHooks Function({bool chapterId})> {
+    PrefetchHooks Function({bool bookId, bool chapterId})> {
   $$OutlineNodesTableTableManager(_$AppDatabase db, $OutlineNodesTable table)
       : super(TableManagerState(
           db: db,
@@ -5774,48 +6009,56 @@ class $$OutlineNodesTableTableManager extends RootTableManager<
               $$OutlineNodesTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
+            Value<String?> bookId = const Value.absent(),
             Value<String> chapterId = const Value.absent(),
             Value<String?> parentId = const Value.absent(),
             Value<String> title = const Value.absent(),
             Value<String?> content = const Value.absent(),
             Value<int> sortOrder = const Value.absent(),
             Value<String> type = const Value.absent(),
+            Value<String> status = const Value.absent(),
             Value<DateTime?> createdAt = const Value.absent(),
             Value<DateTime?> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               OutlineNodesCompanion(
             id: id,
+            bookId: bookId,
             chapterId: chapterId,
             parentId: parentId,
             title: title,
             content: content,
             sortOrder: sortOrder,
             type: type,
+            status: status,
             createdAt: createdAt,
             updatedAt: updatedAt,
             rowid: rowid,
           ),
           createCompanionCallback: ({
             required String id,
+            Value<String?> bookId = const Value.absent(),
             required String chapterId,
             Value<String?> parentId = const Value.absent(),
             required String title,
             Value<String?> content = const Value.absent(),
             required int sortOrder,
             Value<String> type = const Value.absent(),
+            Value<String> status = const Value.absent(),
             Value<DateTime?> createdAt = const Value.absent(),
             Value<DateTime?> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               OutlineNodesCompanion.insert(
             id: id,
+            bookId: bookId,
             chapterId: chapterId,
             parentId: parentId,
             title: title,
             content: content,
             sortOrder: sortOrder,
             type: type,
+            status: status,
             createdAt: createdAt,
             updatedAt: updatedAt,
             rowid: rowid,
@@ -5826,7 +6069,7 @@ class $$OutlineNodesTableTableManager extends RootTableManager<
                     $$OutlineNodesTableReferences(db, table, e)
                   ))
               .toList(),
-          prefetchHooksCallback: ({chapterId = false}) {
+          prefetchHooksCallback: ({bookId = false, chapterId = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [],
@@ -5843,6 +6086,16 @@ class $$OutlineNodesTableTableManager extends RootTableManager<
                       dynamic,
                       dynamic,
                       dynamic>>(state) {
+                if (bookId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.bookId,
+                    referencedTable:
+                        $$OutlineNodesTableReferences._bookIdTable(db),
+                    referencedColumn:
+                        $$OutlineNodesTableReferences._bookIdTable(db).id,
+                  ) as T;
+                }
                 if (chapterId) {
                   state = state.withJoin(
                     currentTable: table,
@@ -5875,7 +6128,7 @@ typedef $$OutlineNodesTableProcessedTableManager = ProcessedTableManager<
     $$OutlineNodesTableUpdateCompanionBuilder,
     (OutlineNode, $$OutlineNodesTableReferences),
     OutlineNode,
-    PrefetchHooks Function({bool chapterId})>;
+    PrefetchHooks Function({bool bookId, bool chapterId})>;
 typedef $$CharactersTableCreateCompanionBuilder = CharactersCompanion Function({
   required String id,
   required String bookId,

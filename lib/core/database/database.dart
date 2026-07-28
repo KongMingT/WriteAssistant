@@ -36,7 +36,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
@@ -58,6 +58,10 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(plotNodes, plotNodes.createdAt);
           await m.addColumn(plotNodes, plotNodes.updatedAt);
           await m.addColumn(writingSessions, writingSessions.chapterId);
+        }
+        if (from < 3) {
+          await m.addColumn(outlineNodes, outlineNodes.bookId);
+          await m.addColumn(outlineNodes, outlineNodes.status);
         }
       },
     );
