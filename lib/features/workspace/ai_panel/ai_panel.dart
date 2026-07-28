@@ -249,7 +249,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
         children: [
           _buildHeader(theme),
           const Divider(height: 1),
-          _buildQuickActions(theme),
+          _buildQuickActions(theme, fontFamily),
           const Divider(height: 1),
           Expanded(child: _buildMessageList(theme, fontFamily)),
           const Divider(height: 1),
@@ -281,19 +281,19 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     );
   }
 
-  Widget _buildQuickActions(ThemeData theme) {
+  Widget _buildQuickActions(ThemeData theme, String fontFamily) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Wrap(
         spacing: 6, runSpacing: 6,
         children: [
-          ActionChip(avatar: const Icon(Icons.account_tree_outlined, size: 14), label: const Text('大纲梳理', style: TextStyle(fontSize: 12)), onPressed: () => _quickAction('outline')),
-          ActionChip(avatar: const Icon(Icons.auto_stories_outlined, size: 14), label: const Text('细纲扩写', style: TextStyle(fontSize: 12)), onPressed: () => _quickAction('expand')),
-          ActionChip(avatar: const Icon(Icons.abc_outlined, size: 14), label: const Text('起名', style: TextStyle(fontSize: 12)), onPressed: () => _quickAction('naming')),
-          ActionChip(avatar: const Icon(Icons.lightbulb_outline, size: 14), label: const Text('卡文助手', style: TextStyle(fontSize: 12)), onPressed: () => _quickAction('writerBlock')),
+          ActionChip(avatar: const Icon(Icons.account_tree_outlined, size: 14), label: Text('大纲梳理', style: TextStyle(fontSize: 12, fontFamily: fontFamily)), onPressed: () => _quickAction('outline')),
+          ActionChip(avatar: const Icon(Icons.auto_stories_outlined, size: 14), label: Text('细纲扩写', style: TextStyle(fontSize: 12, fontFamily: fontFamily)), onPressed: () => _quickAction('expand')),
+          ActionChip(avatar: const Icon(Icons.abc_outlined, size: 14), label: Text('起名', style: TextStyle(fontSize: 12, fontFamily: fontFamily)), onPressed: () => _quickAction('naming')),
+          ActionChip(avatar: const Icon(Icons.lightbulb_outline, size: 14), label: Text('卡文助手', style: TextStyle(fontSize: 12, fontFamily: fontFamily)), onPressed: () => _quickAction('writerBlock')),
           const SizedBox(width: 6),
-          ActionChip(avatar: const Icon(Icons.auto_stories, size: 14), label: const Text('拆书', style: TextStyle(fontSize: 12)), onPressed: () => _quickAction('analyzeBook')),
-          ActionChip(avatar: const Icon(Icons.people_outline, size: 14), label: const Text('人物', style: TextStyle(fontSize: 12)), onPressed: () => _quickAction('manageCharacters')),
+          ActionChip(avatar: const Icon(Icons.auto_stories, size: 14), label: Text('拆书', style: TextStyle(fontSize: 12, fontFamily: fontFamily)), onPressed: () => _quickAction('analyzeBook')),
+          ActionChip(avatar: const Icon(Icons.people_outline, size: 14), label: Text('人物', style: TextStyle(fontSize: 12, fontFamily: fontFamily)), onPressed: () => _quickAction('manageCharacters')),
         ],
       ),
     );
