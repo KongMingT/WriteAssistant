@@ -151,6 +151,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             TextField(
               controller: _keyControllers[provider],
               obscureText: _obscureText,
+              onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 labelText: 'API Key',
                 hintText: 'sk-...',
