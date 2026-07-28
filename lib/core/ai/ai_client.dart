@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
@@ -82,7 +83,7 @@ class AiClient {
       throw AiException('API 请求失败: ${response.statusCode}');
     }
 
-    final responseStream = response.data.stream as Stream<List<int>>;
+    final responseStream = (response.data.stream as Stream<Uint8List>).cast<List<int>>();
     await for (final chunk in responseStream.transform(utf8.decoder)) {
       final lines = chunk.split('\n');
       for (final line in lines) {

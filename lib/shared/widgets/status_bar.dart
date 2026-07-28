@@ -29,6 +29,7 @@ class StatusBar extends ConsumerWidget {
             _StatusItem(icon: Icons.timer_outlined, label: '本次写作', value: state.sessionDuration),
           ],
           const Spacer(),
+          _buildContextStatus(ref, theme),
           IconButton(
             icon: Icon(
               ref.watch(themeModeProvider) == ThemeMode.dark
@@ -88,4 +89,23 @@ class _StatusItem extends StatelessWidget {
       ],
     );
   }
+}
+
+Widget _buildContextStatus(WidgetRef ref, ThemeData theme) {
+  final selectedCount = ref.watch(selectedContextChaptersProvider).length;
+  if (selectedCount == 0) return const SizedBox.shrink();
+  return Padding(
+    padding: const EdgeInsets.only(right: 8),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.checklist, size: 14, color: theme.colorScheme.primary),
+        const SizedBox(width: 4),
+        Text(
+          '已选 $selectedCount 章',
+          style: TextStyle(fontSize: 12, color: theme.colorScheme.primary),
+        ),
+      ],
+    ),
+  );
 }

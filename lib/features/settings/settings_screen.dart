@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/ai/ai_client.dart';
 import '../../core/ai/models/ai_model_config.dart';
+import '../workspace/models/selection_state.dart';
 
 /// 设置页面 - API Key 配置
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -99,6 +100,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const SizedBox(height: 16),
                 ...AiProvider.values.map((p) => _buildProviderCard(p, theme)),
                 const SizedBox(height: 32),
+                Text('AI 对话上下文', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                Text('AI 助手自动携带选中的章节内容作为背景',
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                const SizedBox(height: 12),
+                _buildContextConfig(theme),
+                const SizedBox(height: 32),
                 Text('获取 API Key', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 _buildInfoTile('DeepSeek', 'https://platform.deepseek.com/api_keys', theme),
@@ -188,6 +196,44 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 child: const Text('保存'),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContextConfig(ThemeData theme) {
+    final config = ref.watch(aiContextConfigProvider);
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text('选章上限', style: theme.textTheme.bodyMedium),
+                const Spacer(),
+                SegmentedButton<int>(
+                  segments: const [
+                    ButtonSegment(value: 5, label: Text('5 章')),
+                    ButtonSegment(value: 10, label: Text('10 章')),
+                  ],
+                  selected: {config.maxChapters},
+                  onSelectionChanged: (v) {
+                    ref.read(aiContextConfigProvider.notifier).state =
+                        AiContextConfig(maxChapters: v.first, maxChars: config.maxChars);
+                  },
+                  style: ButtonStyle(
+                    visualDensity: VisualDensity.compact,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text('字数上限: 20000 字（固定）', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
           ],
         ),
       ),

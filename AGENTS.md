@@ -195,11 +195,107 @@ lib/
 7. **自动更新** — 无版本检测/更新机制。
 8. **云同步** — 无云端备份/同步功能。
 
-### 已知限制
-- Windows 独占（Android 和 Web 有配置但未测试）
-- AI 提示词固定为中文网文场景
-- 章纲目前仅支持单层节点（`parentId` 字段存在但未实现层级 UI）
-- `flutter_secure_storage` 在 Web 上不可用（但 Web 不是目标平台）
+---
+
+## AI 对话上下文选择（规划中）
+
+### 目标
+在 AI 对话面板中提供一个"多选章节"的 UI，让用户自主选择哪些章节的内容作为 AI 对话的上下文背景，而不是每次都自动塞入当前章节。
+
+### 当前问题
+- `_quickAction`（`ai_panel.dart:112-131`）自动取当前选中章节的前 2000 字作为上下文
+- 普通文字消息（`_sendMessage`）完全不包含任何章节上下文
+- 用户无法选择用哪些章节作为上下文，也无法控制上下文的量
+
+### 实现方案
+
+#### 1. 章节选择状态（Provider）
+新增 `selectedContextChaptersProvider`（`StateProvider<Set<String>>`）存储用户勾选的章节 ID 集合。
+
+#### 2. AI 面板内嵌章节选择器
+- 在 AI 面板折叠区域展示卷 → 章节树（复用或引用 `chapter_tree.dart` 的数据逻辑）
+- 每章节前加 **Checkbox** 供多选
+- 显示每章标题 + 字数
+- 底部显示概要："已选 N 章，共 M 字（限制 N 章 / 20000 字）"
+
+#### 3. 双重阈值限制
+- **章节数上限**: 配置化，默认 10，用户可在设置中切换 5 / 10
+- **字数上限**: 固定 20000 字符（含角色信息）
+- 选章超出任一阈值时：按 sortOrder 顺序保留最新的章节，旧章节自动取消勾选（或提示用户）
+
+#### 4. 上下文组装逻辑（`_buildContext` 方法抽取）
+每次发消息前（`_sendMessage` 和 `_quickAction` 统一走此逻辑）：
+1. 收集 `selectedContextChaptersProvider` 中所有章节内容
+2. 自动包含当前编辑章节（`selectedChapterProvider`，但内容只取前 2000 字避免重复冗余）
+3. 自动包含当前书籍角色列表（字符 < 500，若超则取前 500）
+4. 按 `sortOrder` 降序拼接，截断至 20000 字
+5. 组装为固定格式文本，注入到 user message 末尾
+
+**注入时机**：
+- **快捷操作**: 拼入已构造的 prompt 中
+- **手动输入**: 自动附加在用户输入文本之后，以 `---\n【当前上下文】\n...` 分隔
+
+#### 5. 状态栏同步
+`status_bar.dart` 显示 "📄 已选 N 章" 提示（复用 `writingStateProvider` 或新增 `aiContextStateProvider`）。
+
+### 涉及文件
+| 文件 | 改动 |
+|------|------|
+| `lib/features/workspace/ai_panel/ai_panel.dart` | 新增章节选择器 UI，重构 `_sendMessage` 上下文组装 |
+| `lib/features/workspace/models/selection_state.dart` | 新增 `selectedContextChaptersProvider`、`aiContextConfigProvider` |
+| `lib/shared/widgets/status_bar.dart` | 显示选中章节概要 |
+| `lib/features/settings/settings_screen.dart` | 可选："上下文选章上限 5/10" 配置项 |
+
+### 扩展点
+- **自定义字数上限**：当前固定 20000，后续可改为用户可配
+- **选择持久化**：当前仅内存状态，后续可存到 `writing_sessions` 表
+- **排除当前章节**：如果用户不想自动包含当前编辑章节，可加开关
+- **按卷全选/反选**：卷标题旁加全选 checkbox
+- **上下文预览**：选中章节后展示片段预览，方便确认内容是否合适
+
+---
+
+## Utf8Decoder 类型错误（已知 Bug）
+
+### 错误信息
+```
+❌ 请求失败: type 'Utf8Decoder' is not a subtype of type 'StreamTransformer<Uint8List, String>' of 'streamTransformer'
+```
+
+### 根因
+`ai_client.dart:85-86` 中，Dio 5.4 流式响应返回 `Stream<Uint8List>`，但 `Utf8Decoder` 的类型是 `StreamTransformer<List<int>, String>`。Dart 泛型在运行时不变（invariant），即使 `Uint8List implements List<int>`，`StreamTransformer<Uint8List, String>` 与 `StreamTransformer<List<int>, String>` 仍视为不同类型，导致类型转换失败。
+
+拆书页使用非流式 `client.chat()` 方法（`book_analysis_screen.dart:149`），不涉及流转换，因此不受影响。
+
+### 修复方案
+将 `ai_client.dart:85-86`：
+
+```dart
+final responseStream = response.data.stream as Stream<List<int>>;
+await for (final chunk in responseStream.transform(utf8.decoder)) {
+```
+
+改为：
+
+```dart
+final responseStream = (response.data.stream as Stream<Uint8List>)
+    .cast<List<int>>();
+await for (final chunk in responseStream.transform(utf8.decoder)) {
+```
+
+需要增补 `import 'dart:typed_data';`。
+
+`.cast<List<int>>()` 会创建一个新的包装 `Stream<List<int>>`，运行时类型正确匹配 `Utf8Decoder` 要求的 `StreamTransformer<List<int>, String>`，不再触发类型错误。
+
+### 影响范围
+- AI 对话面板流式回复（`chatStream`）修复
+- 不影响非流式请求（`chat` 方法）
+- 不影响其他配置了的供应商（所有供应商走同一个 `chatStream` 逻辑）
+
+### 单元测试建议
+- 测试 `chatStream` 在正常 SSE 响应下能正确解析 `data: {...}` 行
+- 测试 `[DONE]` 终止标记能正确结束流
+- 测试 HTTP 非 200 响应能抛出 `AiException`
 
 ---
 

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/ai/ai_client.dart';
 import '../../../core/ai/models/ai_model_config.dart';
 import '../../../core/ai/prompts/prompts.dart';
+import '../../../core/database/database.dart';
 import '../../../core/database/providers.dart';
 import '../../../shared/themes/theme_provider.dart';
 import '../../book_analysis/book_analysis_screen.dart';
@@ -24,12 +25,118 @@ class _AiPanelState extends ConsumerState<AiPanel> {
   final ScrollController _scrollController = ScrollController();
   final List<_ChatMessage> _messages = [];
   bool _isLoading = false;
+  bool _showChapterSelector = false;
+  List<Volume> _volumes = [];
+  List<Chapter> _allChapters = [];
+  bool _selectorLoading = false;
 
   @override
   void dispose() {
     _inputController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadChapterSelector() async {
+    final bookId = ref.read(selectedBookProvider);
+    if (bookId == null) return;
+    setState(() => _selectorLoading = true);
+    try {
+      final volumeDao = ref.read(volumeDaoProvider);
+      final chapterDao = ref.read(chapterDaoProvider);
+      final volumes = await volumeDao.getVolumesByBook(bookId);
+      final allChapters = <Chapter>[];
+      for (final vol in volumes) {
+        allChapters.addAll(await chapterDao.getChaptersByVolume(vol.id));
+      }
+      if (mounted) {
+        setState(() {
+          _volumes = volumes;
+          _allChapters = allChapters;
+          _selectorLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _selectorLoading = false);
+    }
+  }
+
+  Future<String> _buildContext() async {
+    final config = ref.read(aiContextConfigProvider);
+    final maxChars = config.maxChars;
+    final buffer = StringBuffer();
+    int totalChars = 0;
+
+    // 1. Selected chapters
+    final selectedIds = ref.read(selectedContextChaptersProvider);
+    final chapterDao = ref.read(chapterDaoProvider);
+    final selectedChapters = <Chapter>[];
+    for (final id in selectedIds) {
+      final ch = await chapterDao.getChapterById(id);
+      if (ch != null) selectedChapters.add(ch);
+    }
+    selectedChapters.sort((a, b) => b.sortOrder.compareTo(a.sortOrder));
+
+    if (selectedChapters.isNotEmpty) {
+      buffer.writeln('【上下文章节】');
+      for (final ch in selectedChapters) {
+        final remaining = maxChars - totalChars;
+        if (remaining <= 0) break;
+        final content = ch.content.length > remaining
+            ? ch.content.substring(0, remaining)
+            : ch.content;
+        totalChars += content.length;
+        buffer.writeln('--- ${ch.title} ---');
+        buffer.writeln(content);
+        buffer.writeln();
+      }
+    }
+
+    // 2. Current chapter (first 2000 chars)
+    final chapterId = ref.read(selectedChapterProvider);
+    if (chapterId != null && !selectedIds.contains(chapterId)) {
+      final ch = await chapterDao.getChapterById(chapterId);
+      if (ch != null) {
+        final remaining = maxChars - totalChars;
+        if (remaining > 0 && ch.content.isNotEmpty) {
+          buffer.writeln('【当前章节】');
+          final content = ch.content.length > 2000
+              ? ch.content.substring(0, 2000)
+              : ch.content.length > remaining
+                  ? ch.content.substring(0, remaining)
+                  : ch.content;
+          final actualLen = content.length > 2000 ? 2000 : content.length;
+          final truncated = content.substring(0, actualLen > remaining ? remaining : actualLen);
+          totalChars += truncated.length;
+          buffer.writeln('--- ${ch.title}（前${truncated.length}字）---');
+          buffer.writeln(truncated);
+          buffer.writeln();
+        }
+      }
+    }
+
+    // 3. Character list (first 500 chars)
+    final bookId = ref.read(selectedBookProvider);
+    if (bookId != null) {
+      final characterDao = ref.read(characterDaoProvider);
+      final characters = await characterDao.getCharactersByBook(bookId);
+      if (characters.isNotEmpty) {
+        final remaining = maxChars - totalChars;
+        if (remaining > 0) {
+          buffer.writeln('【角色设定】');
+          final charText = characters
+              .map((c) => '- ${c.name}（${c.roleType}）${c.personality != null && c.personality!.isNotEmpty ? "性格：${c.personality}" : ""}')
+              .join('\n');
+          final truncated = charText.length > remaining
+              ? charText.substring(0, remaining)
+              : charText;
+          buffer.writeln(truncated);
+        }
+      }
+    }
+
+    final result = buffer.toString().trim();
+    return result.isNotEmpty ? '\n\n---\n$result' : '';
   }
 
   Future<void> _sendMessage(String text) async {
@@ -51,11 +158,22 @@ class _AiPanelState extends ConsumerState<AiPanel> {
         return;
       }
 
+      String userText = text;
+      try {
+        final context = await _buildContext();
+        if (context.isNotEmpty) {
+          userText = '$text$context';
+        }
+      } catch (_) {}
+
       final client = AiClient();
       final apiMessages = [
         const AiMessage(role: 'system', content: AiPrompts.systemWriter),
         ..._messages.where((m) => m.role != 'system').map((m) => AiMessage(role: m.role, content: m.content)),
       ];
+      if (apiMessages.isNotEmpty && apiMessages.last.role == 'user') {
+        apiMessages.last = AiMessage(role: 'user', content: userText);
+      }
 
       String accumulated = '';
 
@@ -109,35 +227,12 @@ class _AiPanelState extends ConsumerState<AiPanel> {
       return;
     }
 
-    String chapterContext = '';
-    String bookContext = '';
-    try {
-      final chapterId = ref.read(selectedChapterProvider);
-      if (chapterId != null) {
-        final chapterDao = ref.read(chapterDaoProvider);
-        final chapter = await chapterDao.getChapterById(chapterId);
-        if (chapter != null && mounted) {
-          chapterContext = chapter.content.substring(0, chapter.content.length > 2000 ? 2000 : chapter.content.length);
-        }
-      }
-      final bookId = ref.read(selectedBookProvider);
-      if (bookId != null) {
-        final characterDao = ref.read(characterDaoProvider);
-        final characters = await characterDao.getCharactersByBook(bookId);
-        if (characters.isNotEmpty) {
-          bookContext = '当前书籍角色：\n${characters.map((c) => '- ${c.name}（${c.roleType}）${c.personality != null && c.personality!.isNotEmpty ? "性格：${c.personality}" : ""}').join('\n')}';
-        }
-      }
-    } catch (_) {}
-
     if (!mounted) return;
 
     switch (action) {
       case 'outline':
         await _sendMessage([
           '请为我生成一份详细的章节大纲（10-20章）：',
-          if (chapterContext.isNotEmpty) '现有章节内容参考（前2000字）：\n$chapterContext',
-          if (bookContext.isNotEmpty) bookContext,
           '',
           '要求：每章给出标题、核心内容、爽点/钩子，前后连贯。',
         ].join('\n\n'));
@@ -146,8 +241,6 @@ class _AiPanelState extends ConsumerState<AiPanel> {
         await _sendMessage([
           '请根据以下细纲扩写成一篇完整的网文章节（约3000-4000字）。',
           '直接输出正文，不要加额外说明。',
-          if (bookContext.isNotEmpty) bookContext,
-          if (chapterContext.isNotEmpty) '当前章节前文：\n$chapterContext',
           '',
           '细纲（请在下面填写你的细纲内容）：',
         ].join('\n\n'));
@@ -156,10 +249,16 @@ class _AiPanelState extends ConsumerState<AiPanel> {
         await _sendMessage(AiPrompts.naming('小说角色', style: '古风玄幻', count: 15));
         break;
       case 'writerBlock':
-        await _sendMessage(AiPrompts.writerBlock(
-          chapterContext.isNotEmpty ? chapterContext : '(暂无近期内容)',
-          bookContext.isNotEmpty ? bookContext : '(暂无书籍设定)',
-        ));
+        await _sendMessage([
+          '作者在写小说时卡住了，需要你的帮助。',
+          '',
+          '请给出 3-5 个不同的发展方向建议，每个建议包括：',
+          '1. 发展方向简述',
+          '2. 具体的剧情走向',
+          '3. 这个方向能带来的爽点/看点',
+          '',
+          '要求：不要太过跳脱，要符合当前故事逻辑。',
+        ].join('\n'));
         break;
     }
   }
@@ -250,6 +349,10 @@ class _AiPanelState extends ConsumerState<AiPanel> {
           _buildHeader(theme),
           const Divider(height: 1),
           _buildQuickActions(theme, fontFamily),
+          if (_showChapterSelector) ...[
+            const Divider(height: 1),
+            _buildChapterSelector(theme, fontFamily),
+          ],
           const Divider(height: 1),
           Expanded(child: _buildMessageList(theme, fontFamily)),
           const Divider(height: 1),
@@ -260,6 +363,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
   }
 
   Widget _buildHeader(ThemeData theme) {
+    final selectedCount = ref.watch(selectedContextChaptersProvider).length;
     return Padding(
       padding: const EdgeInsets.all(12),
       child: Row(children: [
@@ -267,6 +371,34 @@ class _AiPanelState extends ConsumerState<AiPanel> {
         const SizedBox(width: 8),
         Text('AI 助手', style: TextStyle(fontWeight: FontWeight.w600)),
         const Spacer(),
+        if (selectedCount > 0)
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text('已选$selectedCount章', style: TextStyle(fontSize: 11, color: theme.colorScheme.onPrimaryContainer)),
+            ),
+          ),
+        IconButton(
+          icon: Icon(
+            _showChapterSelector ? Icons.checklist : Icons.checklist_outlined,
+            size: 18,
+            color: _showChapterSelector ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+          ),
+          onPressed: () {
+            setState(() => _showChapterSelector = !_showChapterSelector);
+            if (_showChapterSelector && _volumes.isEmpty) {
+              _loadChapterSelector();
+            }
+          },
+          tooltip: '选择上下文章节',
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          padding: EdgeInsets.zero,
+        ),
         IconButton(
           icon: const Icon(Icons.settings_outlined, size: 18),
           onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
@@ -295,6 +427,129 @@ class _AiPanelState extends ConsumerState<AiPanel> {
           ActionChip(avatar: const Icon(Icons.auto_stories, size: 14), label: Text('拆书', style: TextStyle(fontSize: 12, fontFamily: fontFamily)), onPressed: () => _quickAction('analyzeBook')),
           ActionChip(avatar: const Icon(Icons.people_outline, size: 14), label: Text('人物', style: TextStyle(fontSize: 12, fontFamily: fontFamily)), onPressed: () => _quickAction('manageCharacters')),
         ],
+      ),
+    );
+  }
+
+  Widget _buildChapterSelector(ThemeData theme, String fontFamily) {
+    final selectedIds = ref.watch(selectedContextChaptersProvider);
+    final config = ref.read(aiContextConfigProvider);
+    int totalChars = 0;
+    for (final id in selectedIds) {
+      final ch = _allChapters.where((c) => c.id == id).firstOrNull;
+      if (ch != null) totalChars += ch.content.length;
+    }
+
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 200),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Row(
+              children: [
+                Text('选择上下文章节', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: theme.colorScheme.onSurfaceVariant)),
+                const Spacer(),
+                Text(
+                  '已选 ${selectedIds.length}/${config.maxChapters} 章，${totalChars > 1000 ? "${(totalChars / 1000).toStringAsFixed(1)}k" : "$totalChars"} 字',
+                  style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+                ),
+                if (selectedIds.isNotEmpty)
+                  TextButton(
+                    onPressed: () => ref.read(selectedContextChaptersProvider.notifier).state = {},
+                    child: Text('清除', style: TextStyle(fontSize: 11)),
+                    style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 4), minimumSize: Size.zero),
+                  ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: _selectorLoading
+                ? const Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)))
+                : _volumes.isEmpty
+                    ? Center(child: Text('暂无章节', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)))
+                    : ListView(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        children: _volumes.map((vol) => _buildVolumeCheckboxes(vol, selectedIds, theme, fontFamily)).toList(),
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVolumeCheckboxes(Volume vol, Set<String> selectedIds, ThemeData theme, String fontFamily) {
+    final volChapters = _allChapters.where((c) => c.volumeId == vol.id).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 8, top: 2, bottom: 2, right: 8),
+          child: Row(children: [
+            Icon(Icons.folder_outlined, size: 13, color: theme.colorScheme.onSurfaceVariant),
+            const SizedBox(width: 4),
+            Expanded(child: Text(vol.title, style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant))),
+            Text('${volChapters.length}章', style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant.withAlpha(120))),
+          ]),
+        ),
+        ...volChapters.map((ch) => _buildChapterCheckbox(ch, selectedIds, theme, fontFamily)),
+      ],
+    );
+  }
+
+  Widget _buildChapterCheckbox(Chapter chapter, Set<String> selectedIds, ThemeData theme, String fontFamily) {
+    final isSelected = selectedIds.contains(chapter.id);
+    return InkWell(
+      onTap: () {
+        final notifier = ref.read(selectedContextChaptersProvider.notifier);
+        final config = ref.read(aiContextConfigProvider);
+        final current = Set<String>.from(notifier.state);
+        if (isSelected) {
+          current.remove(chapter.id);
+          notifier.state = current;
+        } else {
+          if (current.length >= config.maxChapters) return;
+          current.add(chapter.id);
+          notifier.state = current;
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.only(left: 24, right: 8, top: 2, bottom: 2),
+        child: Row(children: [
+          SizedBox(
+            width: 18, height: 18,
+            child: Checkbox(
+              value: isSelected,
+              onChanged: (v) {
+                final notifier = ref.read(selectedContextChaptersProvider.notifier);
+                final config = ref.read(aiContextConfigProvider);
+                final current = Set<String>.from(notifier.state);
+                if (v == true) {
+                  if (current.length >= config.maxChapters) return;
+                  current.add(chapter.id);
+                } else {
+                  current.remove(chapter.id);
+                }
+                notifier.state = current;
+              },
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              chapter.title,
+              style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (chapter.wordCount > 0)
+            Text('${chapter.wordCount}', style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant)),
+        ]),
       ),
     );
   }
