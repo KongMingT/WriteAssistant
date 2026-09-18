@@ -90,7 +90,7 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> {
         showDialog(context: context, builder: (_) => const SearchDialog());
         return KeyEventResult.handled;
       case LogicalKeyboardKey.keyE:
-        _exportCurrentChapter();
+        _showExportMenu();
         return KeyEventResult.handled;
       case LogicalKeyboardKey.keyN:
         ref.read(newChapterRequestProvider.notifier).state++;
@@ -110,7 +110,7 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> {
     showCharacterSheet(context, ref);
   }
 
-  Future<void> _exportCurrentChapter() async {
+  Future<void> _exportCurrentChapter({ExportFormat format = ExportFormat.txt}) async {
     final chapterId = ref.read(selectedChapterProvider);
     if (chapterId == null) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请先选择一个章节')));
@@ -124,15 +124,20 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> {
     final dir = await exportService.pickExportDirectory();
     if (dir == null || !mounted) return;
 
-    await exportService.exportChapter(dir, chapter.title, chapter.content);
+    await exportService.exportChapter(
+      directory: dir,
+      title: chapter.title,
+      content: chapter.content,
+      format: format,
+    );
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已导出: ${chapter.title}.txt'), duration: Duration(seconds: 2)),
+        SnackBar(content: Text('已导出: ${chapter.title}.${format.extension}'), duration: Duration(seconds: 2)),
       );
     }
   }
 
-  Future<void> _exportAllChapters() async {
+  Future<void> _exportAllChapters({ExportFormat format = ExportFormat.txt}) async {
     final volumeDao = ref.read(volumeDaoProvider);
     final chapterDao = ref.read(chapterDaoProvider);
     final bookDao = ref.read(bookDaoProvider);
@@ -152,11 +157,77 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> {
       }
     }
 
-    await exportService.exportBook(dir, book.title, chapters);
+    await exportService.exportBook(
+      directory: dir,
+      bookTitle: book.title,
+      chapters: chapters,
+      format: format,
+    );
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已导出: ${book.title}.txt (${chapters.length}章)'), duration: Duration(seconds: 2)),
+        SnackBar(content: Text('已导出: ${book.title}.${format.extension} (${chapters.length}章)'), duration: Duration(seconds: 2)),
       );
+    }
+  }
+
+  /// 导出漫画：先选范围（当前章节/整本书），再选格式
+  Future<void> _showExportMenu() async {
+    final scope = await showDialog<_ExportScope>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('导出'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.article_outlined),
+              title: const Text('导出当前章节'),
+              onTap: () => Navigator.pop(ctx, _ExportScope.chapter),
+            ),
+            ListTile(
+              leading: const Icon(Icons.menu_book_outlined),
+              title: const Text('导出整本书'),
+              onTap: () => Navigator.pop(ctx, _ExportScope.book),
+            ),
+          ],
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消'))],
+      ),
+    );
+    if (scope == null || !mounted) return;
+
+    final format = await showDialog<ExportFormat>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('选择格式'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: ExportFormat.values.map((f) {
+            IconData icon;
+            switch (f) {
+              case ExportFormat.txt:
+                icon = Icons.description_outlined;
+              case ExportFormat.markdown:
+                icon = Icons.code;
+              case ExportFormat.epub:
+                icon = Icons.auto_stories;
+            }
+            return ListTile(
+              leading: Icon(icon),
+              title: Text(f.displayName),
+              onTap: () => Navigator.pop(ctx, f),
+            );
+          }).toList(),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消'))],
+      ),
+    );
+    if (format == null || !mounted) return;
+
+    if (scope == _ExportScope.chapter) {
+      await _exportCurrentChapter(format: format);
+    } else {
+      await _exportAllChapters(format: format);
     }
   }
 
@@ -225,14 +296,12 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> {
         ),
         PopupMenuButton<String>(
           icon: const Icon(Icons.file_download_outlined),
-          tooltip: '导出',
+          tooltip: '导出 (Ctrl+E)',
           onSelected: (v) {
-            if (v == 'chapter') _exportCurrentChapter();
-            if (v == 'book') _exportAllChapters();
+            if (v == 'export') _showExportMenu();
           },
           itemBuilder: (_) => [
-            const PopupMenuItem(value: 'chapter', child: Text('导出当前章节')),
-            const PopupMenuItem(value: 'book', child: Text('导出整本书')),
+            const PopupMenuItem(value: 'export', child: Text('导出 (当前章节/整本书)')),
           ],
         ),
         IconButton(
@@ -324,3 +393,6 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> {
     );
   }
 }
+
+/// 导出范围
+enum _ExportScope { chapter, book }
