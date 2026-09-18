@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +12,7 @@ import '../../core/services/txt_export_service.dart';
 import '../../shared/widgets/status_bar.dart';
 import 'ai_panel/ai_panel.dart';
 import 'editor/chapter_editor.dart';
+import 'editor/search_dialog.dart';
 import 'models/selection_state.dart';
 import 'sidebar/chapter_tree.dart';
 
@@ -85,15 +85,14 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> {
           );
         }
         return KeyEventResult.handled;
+      case LogicalKeyboardKey.keyF:
+        showDialog(context: context, builder: (_) => const SearchDialog());
+        return KeyEventResult.handled;
       case LogicalKeyboardKey.keyE:
         _exportCurrentChapter();
         return KeyEventResult.handled;
       case LogicalKeyboardKey.keyN:
-        if (HardwareKeyboard.instance.isShiftPressed) {
-          ref.read(newBookRequestProvider.notifier).state++;
-        } else {
-          ref.read(newChapterRequestProvider.notifier).state++;
-        }
+        ref.read(newChapterRequestProvider.notifier).state++;
         return KeyEventResult.handled;
       default:
         return KeyEventResult.ignored;
@@ -226,6 +225,11 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> {
           icon: const Icon(Icons.account_tree_outlined),
           tooltip: '书籍大纲',
           onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OutlineScreen(bookId: widget.bookId))),
+        ),
+        IconButton(
+          icon: const Icon(Icons.search),
+          tooltip: '搜索 (Ctrl+F)',
+          onPressed: () => showDialog(context: context, builder: (_) => const SearchDialog()),
         ),
         IconButton(
           icon: const Icon(Icons.people_outlined),

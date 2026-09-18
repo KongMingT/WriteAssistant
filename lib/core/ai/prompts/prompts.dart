@@ -7,25 +7,6 @@ class AiPrompts {
 回答要简洁实用，直接给出可用的内容。
 ''';
 
-  /// 生成章节大纲
-  static String outline(String storyIdea) => '''
-请根据以下故事核心，生成一份详细的章节大纲（10-20章）。
-
-故事核心：
-$storyIdea
-
-要求：
-1. 每章给出标题和核心内容
-2. 标注每章的爽点/钩子
-3. 合理安排节奏：起-承-转-合
-4. 确保前后章节有连贯性
-
-输出格式：
-第1章 - [标题]
-核心内容：[简述]
-爽点/钩子：[说明]
-''';
-
   /// 细纲扩写
   static String expandOutline(String outline, {String context = ''}) => '''
 请根据以下细纲扩写成一篇完整的网文章节（约3000-4000字）。
@@ -136,6 +117,73 @@ ${currentContent.isNotEmpty ? '当前内容：\n$currentContent\n' : ''}
 2. 补充对话片段和冲突设计
 3. 确保与整体故事风格一致
 4. 输出格式：先简要说明扩写思路，再给出扩写后的完整内容
+''';
+
+  /// ===== 新书规划提示词 =====
+
+  /// 新书全局规划
+  static String bookPlanning({
+    required String storyConcept,
+    String genre = '',
+    String characters = '',
+    String worldBuilding = '',
+    String targetLength = '',
+    String existingContent = '',
+  }) => '''
+请作为资深网文规划顾问，根据以下信息输出一份完整的书籍创作规划。
+
+${storyConcept.isNotEmpty ? '故事概念：\n$storyConcept\n' : ''}${genre.isNotEmpty ? '小说类型/风格：\n$genre\n' : ''}${characters.isNotEmpty ? '主要角色：\n$characters\n' : ''}${worldBuilding.isNotEmpty ? '世界观设定：\n$worldBuilding\n' : ''}${targetLength.isNotEmpty ? '预计体量：\n$targetLength\n' : ''}${existingContent.isNotEmpty ? '已有章节摘要（供参考）：\n$existingContent\n' : ''}
+请按以下结构输出 Markdown 格式的规划：
+
+## 📖 世界观设定
+- 世界背景/时代
+- 力量体系/核心规则
+- 主要势力分布
+
+## 📜 故事主线与暗线
+- 主线：起→承→转→合各阶段核心事件
+- 暗线/支线：副线剧情规划
+- 伏笔安排建议
+
+## 👤 核心角色弧光
+- 主角成长轨迹（前期→中期→后期）
+- 重要配角弧光
+- 关键人物关系变化
+
+## 📚 卷/部结构规划
+- 第一卷《XXX》— 核心主题/高潮事件
+- 第二卷《XXX》— 核心主题/高潮事件
+- ...
+
+## ⚡ 节奏与爽点分布
+- 开篇阶段（1-X章）：节奏建议、爽点密度
+- 发展阶段
+- 高潮阶段
+- 收尾阶段
+
+直接用中文输出，不要额外说明。
+''';
+
+  /// 压缩多章内容为逐章摘要（一次调用处理多章）
+  static String compressChapters(String chaptersText) => '''
+请压缩以下小说章节，为每章生成约300字的摘要。
+
+要求：
+1. 保留核心情节、主要冲突、关键人物
+2. 保持故事逻辑连贯
+3. 每章摘要控制在200-400字
+
+章节内容：
+$chaptersText
+
+输出格式（严格按此格式，每章之间用空行分隔）：
+## 章节 #1
+标题：第1章 XXX
+摘要：{300字摘要}
+
+## 章节 #2
+标题：第2章 XXX
+摘要：{300字摘要}
 ''';
 
   /// 从大纲节点生成章节细纲

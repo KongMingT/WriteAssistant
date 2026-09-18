@@ -32,9 +32,6 @@ final forceSaveProvider = StateProvider<int>((ref) => 0);
 /// 新建章节信号
 final newChapterRequestProvider = StateProvider<int>((ref) => 0);
 
-/// 新建书籍信号
-final newBookRequestProvider = StateProvider<int>((ref) => 0);
-
 /// AI 上下文选中的章节 ID 集合
 final selectedContextChaptersProvider = StateProvider<Set<String>>((ref) => {});
 

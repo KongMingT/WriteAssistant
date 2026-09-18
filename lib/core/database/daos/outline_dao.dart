@@ -20,10 +20,10 @@ class OutlineDao extends DatabaseAccessor<AppDatabase> {
         .getSingleOrNull();
   }
 
-  /// 获取某本书所有书籍级大纲节点（chapterId 为空字符串的书籍级节点）
+  /// 获取某本书所有书籍级大纲节点（bookId 匹配且 chapterId 为空字符串，排除章级节点）
   Future<List<OutlineNode>> getOutlineByBook(String bookId) async {
     return (select(db.outlineNodes)
-          ..where((n) => n.bookId.equals(bookId))
+          ..where((n) => n.bookId.equals(bookId) & n.chapterId.equals(''))
           ..orderBy([(n) => OrderingTerm(expression: n.sortOrder)]))
         .get();
   }

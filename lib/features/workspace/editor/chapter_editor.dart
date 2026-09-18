@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/providers.dart';
 import '../../../shared/themes/theme_provider.dart';
+import '../../../shared/widgets/undo_stack.dart';
 import '../../outline/outline_panel.dart';
 import '../models/selection_state.dart';
 
@@ -33,6 +34,9 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
   bool _showOutline = true;
   DateTime? _sessionStart;
   Timer? _statusTimer;
+  final _undoStack = UndoStack();
+  Timer? _undoTimer;
+  bool _isUndoingRedoing = false;
 
   @override
   void initState() {
@@ -251,12 +255,22 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
       child: Focus(
         onKeyEvent: (node, event) {
           if (event is KeyDownEvent) {
+            final ctrl = HardwareKeyboard.instance.isControlPressed;
+            final shift = HardwareKeyboard.instance.isShiftPressed;
             if (event.logicalKey == LogicalKeyboardKey.tab) {
               _insertTab();
               return KeyEventResult.handled;
             }
-            if (event.logicalKey == LogicalKeyboardKey.enter && !HardwareKeyboard.instance.isShiftPressed) {
+            if (event.logicalKey == LogicalKeyboardKey.enter && !shift) {
               _insertNewlineWithIndent();
+              return KeyEventResult.handled;
+            }
+            if (ctrl && event.logicalKey == LogicalKeyboardKey.keyZ) {
+              if (shift) { _redo(); } else { _undo(); }
+              return KeyEventResult.handled;
+            }
+            if (ctrl && event.logicalKey == LogicalKeyboardKey.keyY) {
+              _redo();
               return KeyEventResult.handled;
             }
           }
@@ -285,6 +299,36 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
   void _onContentChanged(String text) {
     _debounceSave(text);
     _updateStatusBar();
+    if (!_isUndoingRedoing) {
+      _undoTimer?.cancel();
+      _undoTimer = Timer(const Duration(milliseconds: 300), () {
+        _undoStack.push(_contentController.value);
+      });
+    }
+  }
+
+  // ===== 撤销/重做 =====
+
+  void _undo() {
+    _undoTimer?.cancel();
+    final current = _contentController.value;
+    final previous = _undoStack.undo(current);
+    if (previous != null) {
+      _isUndoingRedoing = true;
+      _contentController.value = previous;
+      _isUndoingRedoing = false;
+    }
+  }
+
+  void _redo() {
+    _undoTimer?.cancel();
+    final current = _contentController.value;
+    final next = _undoStack.redo(current);
+    if (next != null) {
+      _isUndoingRedoing = true;
+      _contentController.value = next;
+      _isUndoingRedoing = false;
+    }
   }
 
   // ===== Tab键插入缩进 =====
@@ -447,6 +491,8 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
     if (chapter != null && mounted) {
       _contentController.text = chapter.content;
       _titleController.text = chapter.title;
+      _undoStack.clear();
+      _undoStack.push(_contentController.value);
       setState(() { _currentChapterId = chapterId; _isLoading = false; });
       _sessionStart = DateTime.now();
       _updateStatusBar();

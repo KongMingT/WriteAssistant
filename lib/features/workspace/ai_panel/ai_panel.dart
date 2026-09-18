@@ -10,6 +10,7 @@ import '../../../core/ai/models/ai_model_config.dart';
 import '../../../core/ai/prompts/prompts.dart';
 import '../../../core/database/database.dart';
 import '../../../core/database/providers.dart';
+import '../../../core/services/chapter_compress_service.dart';
 import '../../../core/utils/id_generator.dart';
 import '../../../shared/themes/theme_provider.dart';
 import '../../book_analysis/book_analysis_screen.dart';
@@ -255,12 +256,8 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     if (!mounted) return;
 
     switch (action) {
-      case 'outline':
-        await _sendMessage([
-          '请为我生成一份详细的章节大纲（10-20章）：',
-          '',
-          '要求：每章给出标题、核心内容、爽点/钩子，前后连贯。',
-        ].join('\n\n'));
+      case 'bookPlanning':
+        await _handleBookPlanning();
         break;
       case 'expand':
         await _sendMessage([
@@ -331,6 +328,182 @@ class _AiPanelState extends ConsumerState<AiPanel> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('请先在大纲页面中选择一个节点'), duration: Duration(seconds: 2)),
       );
+    }
+  }
+
+  Future<void> _handleBookPlanning() async {
+    final bookId = ref.read(selectedBookProvider);
+    String existingContent = '';
+
+    // If book exists and has selected chapters, compress them first
+    if (bookId != null) {
+      final selectedIds = ref.read(selectedContextChaptersProvider);
+      if (selectedIds.isNotEmpty) {
+        final chapterDao = ref.read(chapterDaoProvider);
+        final chapters = <Chapter>[];
+        for (final id in selectedIds) {
+          final ch = await chapterDao.getChapterById(id);
+          if (ch != null) chapters.add(ch);
+        }
+
+        if (chapters.isNotEmpty && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('正在压缩章节摘要...'), duration: Duration(seconds: 1)),
+          );
+
+          final config = await ref.read(aiConfigProvider.future);
+          if (config.apiKey != null && config.apiKey!.isNotEmpty) {
+            final client = AiClient();
+            final dao = ref.read(outlineDaoProvider);
+            final service = ChapterCompressService(client, dao);
+            final summaries = await service.compress(
+              chapters: chapters,
+              provider: config.provider,
+              apiKey: config.apiKey!,
+              bookId: bookId,
+            );
+
+            existingContent = summaries.map((s) => '${s.title}：${s.summary}').join('\n\n');
+          }
+        }
+      }
+    }
+
+    if (!mounted) return;
+    await _showBookPlanningDialog(existingContent);
+  }
+
+  Future<void> _showBookPlanningDialog(String existingContent) async {
+    final conceptCtrl = TextEditingController();
+    final genreCtrl = TextEditingController();
+    final charactersCtrl = TextEditingController();
+    final worldCtrl = TextEditingController();
+    final targetCtrl = TextEditingController();
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('新书规划'),
+        content: SizedBox(
+          width: 480,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('填写以下信息，AI 将生成一份完整的书籍创作规划。', style: TextStyle(fontSize: 12)),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: conceptCtrl,
+                  decoration: const InputDecoration(
+                    labelText: '故事概念 *',
+                    hintText: '如：一个现代程序员穿越到修仙世界，凭借编程思维开创全新修炼体系...',
+                    isDense: true,
+                    alignLabelWithHint: true,
+                  ),
+                  maxLines: 4,
+                  autofocus: true,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: genreCtrl,
+                  decoration: const InputDecoration(
+                    labelText: '小说类型/风格（可选）',
+                    hintText: '玄幻/仙侠/都市/科幻，轻松/严肃/热血',
+                    isDense: true,
+                  ),
+                  maxLines: 1,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: charactersCtrl,
+                  decoration: const InputDecoration(
+                    labelText: '主要角色（可选）',
+                    hintText: '主角和重要配角的名字、定位',
+                    isDense: true,
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: worldCtrl,
+                  decoration: const InputDecoration(
+                    labelText: '世界观设定（可选）',
+                    hintText: '力量体系、势力分布、特殊规则',
+                    isDense: true,
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: targetCtrl,
+                  decoration: const InputDecoration(
+                    labelText: '预计体量（可选）',
+                    hintText: '如：100万字/3卷/50章',
+                    isDense: true,
+                  ),
+                  maxLines: 1,
+                ),
+                if (existingContent.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('已有章节摘要（自动生成）', style: TextStyle(
+                          fontSize: 11,
+                          color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                        )),
+                        const SizedBox(height: 4),
+                        Text(existingContent, style: const TextStyle(fontSize: 11)),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          FilledButton(
+            onPressed: () {
+              if (conceptCtrl.text.trim().isEmpty) return;
+              Navigator.pop(ctx, true);
+            },
+            child: const Text('生成规划'),
+          ),
+        ],
+      ),
+    );
+
+    final concept = conceptCtrl.text.trim();
+    final genre = genreCtrl.text.trim();
+    final characters = charactersCtrl.text.trim();
+    final world = worldCtrl.text.trim();
+    final target = targetCtrl.text.trim();
+    conceptCtrl.dispose();
+    genreCtrl.dispose();
+    charactersCtrl.dispose();
+    worldCtrl.dispose();
+    targetCtrl.dispose();
+
+    if (result == true && concept.isNotEmpty && mounted) {
+      final prompt = AiPrompts.bookPlanning(
+        storyConcept: concept,
+        genre: genre,
+        characters: characters,
+        worldBuilding: world,
+        targetLength: target,
+        existingContent: existingContent,
+      );
+      await _sendMessage(prompt);
     }
   }
 
@@ -444,7 +617,22 @@ class _AiPanelState extends ConsumerState<AiPanel> {
 
     final dao = ref.read(outlineDaoProvider);
     var rootNode = await dao.getBookRoot(bookId);
-    if (rootNode == null) return;
+    if (rootNode == null) {
+      // 首次导入：自动创建书籍大纲根节点，避免静默失败
+      await dao.insertOutlineNode(OutlineNodesCompanion(
+        id: Value(generateId()),
+        bookId: Value(bookId),
+        chapterId: const Value(''),
+        parentId: const Value(null),
+        title: const Value('书籍大纲'),
+        content: const Value(null),
+        sortOrder: const Value(0),
+        type: const Value('book_root'),
+        status: const Value('draft'),
+      ));
+      rootNode = await dao.getBookRoot(bookId);
+      if (rootNode == null) return;
+    }
 
     final companions = _jsonToCompanions(jsonList, bookId, rootNode.id);
     if (companions.isEmpty) return;
@@ -664,7 +852,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
       child: Wrap(
         spacing: 6, runSpacing: 6,
         children: [
-          ActionChip(avatar: const Icon(Icons.account_tree_outlined, size: 14), label: Text('大纲梳理', style: TextStyle(fontSize: 12, fontFamily: fontFamily)), onPressed: () => _quickAction('outline')),
+          ActionChip(avatar: const Icon(Icons.menu_book_outlined, size: 14), label: Text('新书规划', style: TextStyle(fontSize: 12, fontFamily: fontFamily)), onPressed: () => _quickAction('bookPlanning')),
           ActionChip(avatar: const Icon(Icons.auto_stories_outlined, size: 14), label: Text('细纲扩写', style: TextStyle(fontSize: 12, fontFamily: fontFamily)), onPressed: () => _quickAction('expand')),
           ActionChip(avatar: const Icon(Icons.abc_outlined, size: 14), label: Text('起名', style: TextStyle(fontSize: 12, fontFamily: fontFamily)), onPressed: () => _quickAction('naming')),
           ActionChip(avatar: const Icon(Icons.lightbulb_outline, size: 14), label: Text('卡文助手', style: TextStyle(fontSize: 12, fontFamily: fontFamily)), onPressed: () => _quickAction('writerBlock')),
