@@ -4051,6 +4051,575 @@ class WritingSessionsCompanion extends UpdateCompanion<WritingSession> {
   }
 }
 
+class $AiChatMessagesTable extends AiChatMessages
+    with TableInfo<$AiChatMessagesTable, AiChatMessage> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AiChatMessagesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _roleMeta = const VerificationMeta('role');
+  @override
+  late final GeneratedColumn<String> role = GeneratedColumn<String>(
+      'role', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _contentMeta =
+      const VerificationMeta('content');
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+      'content', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [id, role, content, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ai_chat_messages';
+  @override
+  VerificationContext validateIntegrity(Insertable<AiChatMessage> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('role')) {
+      context.handle(
+          _roleMeta, role.isAcceptableOrUnknown(data['role']!, _roleMeta));
+    } else if (isInserting) {
+      context.missing(_roleMeta);
+    }
+    if (data.containsKey('content')) {
+      context.handle(_contentMeta,
+          content.isAcceptableOrUnknown(data['content']!, _contentMeta));
+    } else if (isInserting) {
+      context.missing(_contentMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AiChatMessage map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AiChatMessage(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      role: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}role'])!,
+      content: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}content'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $AiChatMessagesTable createAlias(String alias) {
+    return $AiChatMessagesTable(attachedDatabase, alias);
+  }
+}
+
+class AiChatMessage extends DataClass implements Insertable<AiChatMessage> {
+  final String id;
+  final String role;
+  final String content;
+  final DateTime createdAt;
+  const AiChatMessage(
+      {required this.id,
+      required this.role,
+      required this.content,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['role'] = Variable<String>(role);
+    map['content'] = Variable<String>(content);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  AiChatMessagesCompanion toCompanion(bool nullToAbsent) {
+    return AiChatMessagesCompanion(
+      id: Value(id),
+      role: Value(role),
+      content: Value(content),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory AiChatMessage.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AiChatMessage(
+      id: serializer.fromJson<String>(json['id']),
+      role: serializer.fromJson<String>(json['role']),
+      content: serializer.fromJson<String>(json['content']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'role': serializer.toJson<String>(role),
+      'content': serializer.toJson<String>(content),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  AiChatMessage copyWith(
+          {String? id, String? role, String? content, DateTime? createdAt}) =>
+      AiChatMessage(
+        id: id ?? this.id,
+        role: role ?? this.role,
+        content: content ?? this.content,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  AiChatMessage copyWithCompanion(AiChatMessagesCompanion data) {
+    return AiChatMessage(
+      id: data.id.present ? data.id.value : this.id,
+      role: data.role.present ? data.role.value : this.role,
+      content: data.content.present ? data.content.value : this.content,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiChatMessage(')
+          ..write('id: $id, ')
+          ..write('role: $role, ')
+          ..write('content: $content, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, role, content, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AiChatMessage &&
+          other.id == this.id &&
+          other.role == this.role &&
+          other.content == this.content &&
+          other.createdAt == this.createdAt);
+}
+
+class AiChatMessagesCompanion extends UpdateCompanion<AiChatMessage> {
+  final Value<String> id;
+  final Value<String> role;
+  final Value<String> content;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const AiChatMessagesCompanion({
+    this.id = const Value.absent(),
+    this.role = const Value.absent(),
+    this.content = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AiChatMessagesCompanion.insert({
+    required String id,
+    required String role,
+    required String content,
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        role = Value(role),
+        content = Value(content),
+        createdAt = Value(createdAt);
+  static Insertable<AiChatMessage> custom({
+    Expression<String>? id,
+    Expression<String>? role,
+    Expression<String>? content,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (role != null) 'role': role,
+      if (content != null) 'content': content,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AiChatMessagesCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? role,
+      Value<String>? content,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return AiChatMessagesCompanion(
+      id: id ?? this.id,
+      role: role ?? this.role,
+      content: content ?? this.content,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (role.present) {
+      map['role'] = Variable<String>(role.value);
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiChatMessagesCompanion(')
+          ..write('id: $id, ')
+          ..write('role: $role, ')
+          ..write('content: $content, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ChapterSnapshotsTable extends ChapterSnapshots
+    with TableInfo<$ChapterSnapshotsTable, ChapterSnapshot> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ChapterSnapshotsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _seqMeta = const VerificationMeta('seq');
+  @override
+  late final GeneratedColumn<int> seq = GeneratedColumn<int>(
+      'seq', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _chapterIdMeta =
+      const VerificationMeta('chapterId');
+  @override
+  late final GeneratedColumn<String> chapterId = GeneratedColumn<String>(
+      'chapter_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES chapters (id)'));
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+      'title', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _contentMeta =
+      const VerificationMeta('content');
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+      'content', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [seq, chapterId, title, content, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'chapter_snapshots';
+  @override
+  VerificationContext validateIntegrity(Insertable<ChapterSnapshot> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('seq')) {
+      context.handle(
+          _seqMeta, seq.isAcceptableOrUnknown(data['seq']!, _seqMeta));
+    }
+    if (data.containsKey('chapter_id')) {
+      context.handle(_chapterIdMeta,
+          chapterId.isAcceptableOrUnknown(data['chapter_id']!, _chapterIdMeta));
+    } else if (isInserting) {
+      context.missing(_chapterIdMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+          _titleMeta, title.isAcceptableOrUnknown(data['title']!, _titleMeta));
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('content')) {
+      context.handle(_contentMeta,
+          content.isAcceptableOrUnknown(data['content']!, _contentMeta));
+    } else if (isInserting) {
+      context.missing(_contentMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {seq};
+  @override
+  ChapterSnapshot map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ChapterSnapshot(
+      seq: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}seq'])!,
+      chapterId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}chapter_id'])!,
+      title: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
+      content: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}content'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $ChapterSnapshotsTable createAlias(String alias) {
+    return $ChapterSnapshotsTable(attachedDatabase, alias);
+  }
+}
+
+class ChapterSnapshot extends DataClass implements Insertable<ChapterSnapshot> {
+  final int seq;
+  final String chapterId;
+  final String title;
+  final String content;
+  final DateTime createdAt;
+  const ChapterSnapshot(
+      {required this.seq,
+      required this.chapterId,
+      required this.title,
+      required this.content,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['seq'] = Variable<int>(seq);
+    map['chapter_id'] = Variable<String>(chapterId);
+    map['title'] = Variable<String>(title);
+    map['content'] = Variable<String>(content);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  ChapterSnapshotsCompanion toCompanion(bool nullToAbsent) {
+    return ChapterSnapshotsCompanion(
+      seq: Value(seq),
+      chapterId: Value(chapterId),
+      title: Value(title),
+      content: Value(content),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory ChapterSnapshot.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ChapterSnapshot(
+      seq: serializer.fromJson<int>(json['seq']),
+      chapterId: serializer.fromJson<String>(json['chapterId']),
+      title: serializer.fromJson<String>(json['title']),
+      content: serializer.fromJson<String>(json['content']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'seq': serializer.toJson<int>(seq),
+      'chapterId': serializer.toJson<String>(chapterId),
+      'title': serializer.toJson<String>(title),
+      'content': serializer.toJson<String>(content),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  ChapterSnapshot copyWith(
+          {int? seq,
+          String? chapterId,
+          String? title,
+          String? content,
+          DateTime? createdAt}) =>
+      ChapterSnapshot(
+        seq: seq ?? this.seq,
+        chapterId: chapterId ?? this.chapterId,
+        title: title ?? this.title,
+        content: content ?? this.content,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  ChapterSnapshot copyWithCompanion(ChapterSnapshotsCompanion data) {
+    return ChapterSnapshot(
+      seq: data.seq.present ? data.seq.value : this.seq,
+      chapterId: data.chapterId.present ? data.chapterId.value : this.chapterId,
+      title: data.title.present ? data.title.value : this.title,
+      content: data.content.present ? data.content.value : this.content,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ChapterSnapshot(')
+          ..write('seq: $seq, ')
+          ..write('chapterId: $chapterId, ')
+          ..write('title: $title, ')
+          ..write('content: $content, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(seq, chapterId, title, content, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ChapterSnapshot &&
+          other.seq == this.seq &&
+          other.chapterId == this.chapterId &&
+          other.title == this.title &&
+          other.content == this.content &&
+          other.createdAt == this.createdAt);
+}
+
+class ChapterSnapshotsCompanion extends UpdateCompanion<ChapterSnapshot> {
+  final Value<int> seq;
+  final Value<String> chapterId;
+  final Value<String> title;
+  final Value<String> content;
+  final Value<DateTime> createdAt;
+  const ChapterSnapshotsCompanion({
+    this.seq = const Value.absent(),
+    this.chapterId = const Value.absent(),
+    this.title = const Value.absent(),
+    this.content = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  ChapterSnapshotsCompanion.insert({
+    this.seq = const Value.absent(),
+    required String chapterId,
+    required String title,
+    required String content,
+    required DateTime createdAt,
+  })  : chapterId = Value(chapterId),
+        title = Value(title),
+        content = Value(content),
+        createdAt = Value(createdAt);
+  static Insertable<ChapterSnapshot> custom({
+    Expression<int>? seq,
+    Expression<String>? chapterId,
+    Expression<String>? title,
+    Expression<String>? content,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (seq != null) 'seq': seq,
+      if (chapterId != null) 'chapter_id': chapterId,
+      if (title != null) 'title': title,
+      if (content != null) 'content': content,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  ChapterSnapshotsCompanion copyWith(
+      {Value<int>? seq,
+      Value<String>? chapterId,
+      Value<String>? title,
+      Value<String>? content,
+      Value<DateTime>? createdAt}) {
+    return ChapterSnapshotsCompanion(
+      seq: seq ?? this.seq,
+      chapterId: chapterId ?? this.chapterId,
+      title: title ?? this.title,
+      content: content ?? this.content,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (seq.present) {
+      map['seq'] = Variable<int>(seq.value);
+    }
+    if (chapterId.present) {
+      map['chapter_id'] = Variable<String>(chapterId.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ChapterSnapshotsCompanion(')
+          ..write('seq: $seq, ')
+          ..write('chapterId: $chapterId, ')
+          ..write('title: $title, ')
+          ..write('content: $content, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4065,6 +4634,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PlotNodesTable plotNodes = $PlotNodesTable(this);
   late final $WritingSessionsTable writingSessions =
       $WritingSessionsTable(this);
+  late final $AiChatMessagesTable aiChatMessages = $AiChatMessagesTable(this);
+  late final $ChapterSnapshotsTable chapterSnapshots =
+      $ChapterSnapshotsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4078,7 +4650,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         characterRelations,
         plotLines,
         plotNodes,
-        writingSessions
+        writingSessions,
+        aiChatMessages,
+        chapterSnapshots
       ];
 }
 
@@ -5219,6 +5793,23 @@ final class $$ChaptersTableReferences
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
+
+  static MultiTypedResultKey<$ChapterSnapshotsTable, List<ChapterSnapshot>>
+      _chapterSnapshotsRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.chapterSnapshots,
+              aliasName: $_aliasNameGenerator(
+                  db.chapters.id, db.chapterSnapshots.chapterId));
+
+  $$ChapterSnapshotsTableProcessedTableManager get chapterSnapshotsRefs {
+    final manager = $$ChapterSnapshotsTableTableManager(
+            $_db, $_db.chapterSnapshots)
+        .filter((f) => f.chapterId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache =
+        $_typedResult.readTableOrNull(_chapterSnapshotsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
 }
 
 class $$ChaptersTableFilterComposer
@@ -5329,6 +5920,27 @@ class $$ChaptersTableFilterComposer
             $$WritingSessionsTableFilterComposer(
               $db: $db,
               $table: $db.writingSessions,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> chapterSnapshotsRefs(
+      Expression<bool> Function($$ChapterSnapshotsTableFilterComposer f) f) {
+    final $$ChapterSnapshotsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.chapterSnapshots,
+        getReferencedColumn: (t) => t.chapterId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ChapterSnapshotsTableFilterComposer(
+              $db: $db,
+              $table: $db.chapterSnapshots,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -5507,6 +6119,27 @@ class $$ChaptersTableAnnotationComposer
             ));
     return f(composer);
   }
+
+  Expression<T> chapterSnapshotsRefs<T extends Object>(
+      Expression<T> Function($$ChapterSnapshotsTableAnnotationComposer a) f) {
+    final $$ChapterSnapshotsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.chapterSnapshots,
+        getReferencedColumn: (t) => t.chapterId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ChapterSnapshotsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.chapterSnapshots,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 }
 
 class $$ChaptersTableTableManager extends RootTableManager<
@@ -5524,7 +6157,8 @@ class $$ChaptersTableTableManager extends RootTableManager<
         {bool volumeId,
         bool outlineNodesRefs,
         bool plotNodesRefs,
-        bool writingSessionsRefs})> {
+        bool writingSessionsRefs,
+        bool chapterSnapshotsRefs})> {
   $$ChaptersTableTableManager(_$AppDatabase db, $ChaptersTable table)
       : super(TableManagerState(
           db: db,
@@ -5591,13 +6225,15 @@ class $$ChaptersTableTableManager extends RootTableManager<
               {volumeId = false,
               outlineNodesRefs = false,
               plotNodesRefs = false,
-              writingSessionsRefs = false}) {
+              writingSessionsRefs = false,
+              chapterSnapshotsRefs = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
                 if (outlineNodesRefs) db.outlineNodes,
                 if (plotNodesRefs) db.plotNodes,
-                if (writingSessionsRefs) db.writingSessions
+                if (writingSessionsRefs) db.writingSessions,
+                if (chapterSnapshotsRefs) db.chapterSnapshots
               ],
               addJoins: <
                   T extends TableManagerState<
@@ -5665,6 +6301,19 @@ class $$ChaptersTableTableManager extends RootTableManager<
                         referencedItemsForCurrentItem:
                             (item, referencedItems) => referencedItems
                                 .where((e) => e.chapterId == item.id),
+                        typedResults: items),
+                  if (chapterSnapshotsRefs)
+                    await $_getPrefetchedData<Chapter, $ChaptersTable,
+                            ChapterSnapshot>(
+                        currentTable: table,
+                        referencedTable: $$ChaptersTableReferences
+                            ._chapterSnapshotsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$ChaptersTableReferences(db, table, p0)
+                                .chapterSnapshotsRefs,
+                        referencedItemsForCurrentItem:
+                            (item, referencedItems) => referencedItems
+                                .where((e) => e.chapterId == item.id),
                         typedResults: items)
                 ];
               },
@@ -5688,7 +6337,8 @@ typedef $$ChaptersTableProcessedTableManager = ProcessedTableManager<
         {bool volumeId,
         bool outlineNodesRefs,
         bool plotNodesRefs,
-        bool writingSessionsRefs})>;
+        bool writingSessionsRefs,
+        bool chapterSnapshotsRefs})>;
 typedef $$OutlineNodesTableCreateCompanionBuilder = OutlineNodesCompanion
     Function({
   required String id,
@@ -8105,6 +8755,437 @@ typedef $$WritingSessionsTableProcessedTableManager = ProcessedTableManager<
     (WritingSession, $$WritingSessionsTableReferences),
     WritingSession,
     PrefetchHooks Function({bool bookId, bool chapterId})>;
+typedef $$AiChatMessagesTableCreateCompanionBuilder = AiChatMessagesCompanion
+    Function({
+  required String id,
+  required String role,
+  required String content,
+  required DateTime createdAt,
+  Value<int> rowid,
+});
+typedef $$AiChatMessagesTableUpdateCompanionBuilder = AiChatMessagesCompanion
+    Function({
+  Value<String> id,
+  Value<String> role,
+  Value<String> content,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+class $$AiChatMessagesTableFilterComposer
+    extends Composer<_$AppDatabase, $AiChatMessagesTable> {
+  $$AiChatMessagesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get role => $composableBuilder(
+      column: $table.role, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get content => $composableBuilder(
+      column: $table.content, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$AiChatMessagesTableOrderingComposer
+    extends Composer<_$AppDatabase, $AiChatMessagesTable> {
+  $$AiChatMessagesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get role => $composableBuilder(
+      column: $table.role, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get content => $composableBuilder(
+      column: $table.content, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$AiChatMessagesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AiChatMessagesTable> {
+  $$AiChatMessagesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get role =>
+      $composableBuilder(column: $table.role, builder: (column) => column);
+
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$AiChatMessagesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $AiChatMessagesTable,
+    AiChatMessage,
+    $$AiChatMessagesTableFilterComposer,
+    $$AiChatMessagesTableOrderingComposer,
+    $$AiChatMessagesTableAnnotationComposer,
+    $$AiChatMessagesTableCreateCompanionBuilder,
+    $$AiChatMessagesTableUpdateCompanionBuilder,
+    (
+      AiChatMessage,
+      BaseReferences<_$AppDatabase, $AiChatMessagesTable, AiChatMessage>
+    ),
+    AiChatMessage,
+    PrefetchHooks Function()> {
+  $$AiChatMessagesTableTableManager(
+      _$AppDatabase db, $AiChatMessagesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AiChatMessagesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AiChatMessagesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AiChatMessagesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> role = const Value.absent(),
+            Value<String> content = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AiChatMessagesCompanion(
+            id: id,
+            role: role,
+            content: content,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String role,
+            required String content,
+            required DateTime createdAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AiChatMessagesCompanion.insert(
+            id: id,
+            role: role,
+            content: content,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$AiChatMessagesTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $AiChatMessagesTable,
+    AiChatMessage,
+    $$AiChatMessagesTableFilterComposer,
+    $$AiChatMessagesTableOrderingComposer,
+    $$AiChatMessagesTableAnnotationComposer,
+    $$AiChatMessagesTableCreateCompanionBuilder,
+    $$AiChatMessagesTableUpdateCompanionBuilder,
+    (
+      AiChatMessage,
+      BaseReferences<_$AppDatabase, $AiChatMessagesTable, AiChatMessage>
+    ),
+    AiChatMessage,
+    PrefetchHooks Function()>;
+typedef $$ChapterSnapshotsTableCreateCompanionBuilder
+    = ChapterSnapshotsCompanion Function({
+  Value<int> seq,
+  required String chapterId,
+  required String title,
+  required String content,
+  required DateTime createdAt,
+});
+typedef $$ChapterSnapshotsTableUpdateCompanionBuilder
+    = ChapterSnapshotsCompanion Function({
+  Value<int> seq,
+  Value<String> chapterId,
+  Value<String> title,
+  Value<String> content,
+  Value<DateTime> createdAt,
+});
+
+final class $$ChapterSnapshotsTableReferences extends BaseReferences<
+    _$AppDatabase, $ChapterSnapshotsTable, ChapterSnapshot> {
+  $$ChapterSnapshotsTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static $ChaptersTable _chapterIdTable(_$AppDatabase db) =>
+      db.chapters.createAlias(
+          $_aliasNameGenerator(db.chapterSnapshots.chapterId, db.chapters.id));
+
+  $$ChaptersTableProcessedTableManager get chapterId {
+    final $_column = $_itemColumn<String>('chapter_id')!;
+
+    final manager = $$ChaptersTableTableManager($_db, $_db.chapters)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_chapterIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$ChapterSnapshotsTableFilterComposer
+    extends Composer<_$AppDatabase, $ChapterSnapshotsTable> {
+  $$ChapterSnapshotsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get seq => $composableBuilder(
+      column: $table.seq, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get content => $composableBuilder(
+      column: $table.content, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  $$ChaptersTableFilterComposer get chapterId {
+    final $$ChaptersTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.chapterId,
+        referencedTable: $db.chapters,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ChaptersTableFilterComposer(
+              $db: $db,
+              $table: $db.chapters,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$ChapterSnapshotsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ChapterSnapshotsTable> {
+  $$ChapterSnapshotsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get seq => $composableBuilder(
+      column: $table.seq, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get content => $composableBuilder(
+      column: $table.content, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  $$ChaptersTableOrderingComposer get chapterId {
+    final $$ChaptersTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.chapterId,
+        referencedTable: $db.chapters,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ChaptersTableOrderingComposer(
+              $db: $db,
+              $table: $db.chapters,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$ChapterSnapshotsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ChapterSnapshotsTable> {
+  $$ChapterSnapshotsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get seq =>
+      $composableBuilder(column: $table.seq, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$ChaptersTableAnnotationComposer get chapterId {
+    final $$ChaptersTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.chapterId,
+        referencedTable: $db.chapters,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ChaptersTableAnnotationComposer(
+              $db: $db,
+              $table: $db.chapters,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$ChapterSnapshotsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $ChapterSnapshotsTable,
+    ChapterSnapshot,
+    $$ChapterSnapshotsTableFilterComposer,
+    $$ChapterSnapshotsTableOrderingComposer,
+    $$ChapterSnapshotsTableAnnotationComposer,
+    $$ChapterSnapshotsTableCreateCompanionBuilder,
+    $$ChapterSnapshotsTableUpdateCompanionBuilder,
+    (ChapterSnapshot, $$ChapterSnapshotsTableReferences),
+    ChapterSnapshot,
+    PrefetchHooks Function({bool chapterId})> {
+  $$ChapterSnapshotsTableTableManager(
+      _$AppDatabase db, $ChapterSnapshotsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ChapterSnapshotsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ChapterSnapshotsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ChapterSnapshotsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> seq = const Value.absent(),
+            Value<String> chapterId = const Value.absent(),
+            Value<String> title = const Value.absent(),
+            Value<String> content = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+          }) =>
+              ChapterSnapshotsCompanion(
+            seq: seq,
+            chapterId: chapterId,
+            title: title,
+            content: content,
+            createdAt: createdAt,
+          ),
+          createCompanionCallback: ({
+            Value<int> seq = const Value.absent(),
+            required String chapterId,
+            required String title,
+            required String content,
+            required DateTime createdAt,
+          }) =>
+              ChapterSnapshotsCompanion.insert(
+            seq: seq,
+            chapterId: chapterId,
+            title: title,
+            content: content,
+            createdAt: createdAt,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$ChapterSnapshotsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({chapterId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (chapterId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.chapterId,
+                    referencedTable:
+                        $$ChapterSnapshotsTableReferences._chapterIdTable(db),
+                    referencedColumn: $$ChapterSnapshotsTableReferences
+                        ._chapterIdTable(db)
+                        .id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$ChapterSnapshotsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $ChapterSnapshotsTable,
+    ChapterSnapshot,
+    $$ChapterSnapshotsTableFilterComposer,
+    $$ChapterSnapshotsTableOrderingComposer,
+    $$ChapterSnapshotsTableAnnotationComposer,
+    $$ChapterSnapshotsTableCreateCompanionBuilder,
+    $$ChapterSnapshotsTableUpdateCompanionBuilder,
+    (ChapterSnapshot, $$ChapterSnapshotsTableReferences),
+    ChapterSnapshot,
+    PrefetchHooks Function({bool chapterId})>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -8127,4 +9208,8 @@ class $AppDatabaseManager {
       $$PlotNodesTableTableManager(_db, _db.plotNodes);
   $$WritingSessionsTableTableManager get writingSessions =>
       $$WritingSessionsTableTableManager(_db, _db.writingSessions);
+  $$AiChatMessagesTableTableManager get aiChatMessages =>
+      $$AiChatMessagesTableTableManager(_db, _db.aiChatMessages);
+  $$ChapterSnapshotsTableTableManager get chapterSnapshots =>
+      $$ChapterSnapshotsTableTableManager(_db, _db.chapterSnapshots);
 }

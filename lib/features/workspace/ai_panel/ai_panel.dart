@@ -8,6 +8,7 @@ import 'package:drift/drift.dart' hide Column;
 import '../../../core/ai/ai_client.dart';
 import '../../../core/ai/models/ai_model_config.dart';
 import '../../../core/ai/prompts/prompts.dart';
+import '../../../core/database/daos/ai_chat_dao.dart' show ChatMessage;
 import '../../../core/database/database.dart';
 import '../../../core/database/providers.dart';
 import '../../../core/services/chapter_compress_service.dart';
@@ -145,10 +146,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
 
   Future<void> _sendMessage(String text) async {
     if (text.trim().isEmpty || _isLoading) return;
-    ref.read(aiChatMessagesProvider.notifier).update((state) => [
-      ...state,
-      AiChatMessage(role: 'user', content: text),
-    ]);
+    ref.read(aiChatMessagesProvider.notifier).add(ChatMessage(role: 'user', content: text));
     setState(() => _isLoading = true);
     _inputController.clear();
     _scrollToBottom();
@@ -157,10 +155,8 @@ class _AiPanelState extends ConsumerState<AiPanel> {
       final config = await ref.read(aiConfigProvider.future);
       if (config.apiKey == null || config.apiKey!.isEmpty) {
         setState(() {
-          ref.read(aiChatMessagesProvider.notifier).update((state) => [
-            ...state,
-            const AiChatMessage(role: 'assistant', content: '⚠️ 请先在 设置 → AI 模型配置 中填写 API Key'),
-          ]);
+          ref.read(aiChatMessagesProvider.notifier)
+              .add(const ChatMessage(role: 'assistant', content: '⚠️ 请先在 设置 → AI 模型配置 中填写 API Key'));
           _isLoading = false;
         });
         return;
@@ -187,7 +183,6 @@ class _AiPanelState extends ConsumerState<AiPanel> {
       String accumulated = '';
 
       try {
-        final notifier = ref.read(aiChatMessagesProvider.notifier);
         await for (final chunk in client.chatStream(
           provider: config.provider,
           apiKey: config.apiKey!,
@@ -195,47 +190,28 @@ class _AiPanelState extends ConsumerState<AiPanel> {
         )) {
           accumulated += chunk;
           if (mounted) {
-            final current = notifier.state;
-            if (current.isNotEmpty && current.last.role == 'assistant') {
-              notifier.state = [
-                ...current.sublist(0, current.length - 1),
-                AiChatMessage(role: 'assistant', content: accumulated),
-              ];
-            } else {
-              notifier.state = [
-                ...current,
-                AiChatMessage(role: 'assistant', content: accumulated),
-              ];
-            }
+            ref.read(aiChatMessagesProvider.notifier).upsertAssistant(accumulated);
             _scrollToBottom();
           }
         }
       } catch (_) {
         if (accumulated.isNotEmpty && mounted) {
-          final notifier = ref.read(aiChatMessagesProvider.notifier);
-          final current = notifier.state;
-          if (current.isNotEmpty && current.last.role == 'assistant') {
-            notifier.state = [
-              ...current.sublist(0, current.length - 1),
-              AiChatMessage(role: 'assistant', content: accumulated),
-            ];
-          }
+          ref.read(aiChatMessagesProvider.notifier).upsertAssistant(accumulated);
         }
         rethrow;
       }
 
+      ref.read(aiChatMessagesProvider.notifier).persistNow();
       if (mounted) setState(() => _isLoading = false);
     } catch (e) {
       if (mounted) {
-        final notifier = ref.read(aiChatMessagesProvider.notifier);
-        final current = notifier.state;
+        final current = ref.read(aiChatMessagesProvider);
         final lastMsg = current.isNotEmpty ? current.last : null;
         if (lastMsg == null || lastMsg.role != 'assistant' || !lastMsg.content.startsWith('❌')) {
-          notifier.state = [
-            ...current,
-            AiChatMessage(role: 'assistant', content: '❌ 请求失败: $e'),
-          ];
+          ref.read(aiChatMessagesProvider.notifier)
+              .add(ChatMessage(role: 'assistant', content: '❌ 请求失败: $e'));
         }
+        ref.read(aiChatMessagesProvider.notifier).persistNow();
         setState(() => _isLoading = false);
       }
     }
@@ -839,7 +815,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
         ),
         IconButton(
           icon: Icon(Icons.delete_sweep_outlined, size: 18, color: theme.colorScheme.onSurfaceVariant),
-          onPressed: () => ref.read(aiChatMessagesProvider.notifier).state = [],
+          onPressed: () => ref.read(aiChatMessagesProvider.notifier).clearAll(),
           tooltip: '清空对话', constraints: const BoxConstraints(minWidth: 32, minHeight: 32), padding: EdgeInsets.zero,
         ),
       ]),

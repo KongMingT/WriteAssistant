@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/database/daos/ai_chat_dao.dart'
+    show AiChatDao, ChatMessage;
 import '../../../core/database/database.dart';
+import '../../../core/database/providers.dart';
 
 /// 当前选中的章节 ID
 final selectedChapterProvider = StateProvider<String?>((ref) => null);
@@ -51,14 +54,57 @@ class AiContextConfig {
 
 final aiContextConfigProvider = StateProvider<AiContextConfig>((ref) => const AiContextConfig());
 
-/// AI 对话消息（持久化，跨面板生命周期）
-class AiChatMessage {
-  final String role;
-  final String content;
-  const AiChatMessage({required this.role, required this.content});
+/// AI 对话控制器：启动时从数据库加载，增删后自动落库
+class AiChatController extends StateNotifier<List<ChatMessage>> {
+  AiChatController(this._dao) : super(const []) {
+    _load();
+  }
+
+  final AiChatDao _dao;
+  bool _loaded = false;
+
+  Future<void> _load() async {
+    final messages = await _dao.getAllMessages();
+    if (!mounted) return;
+    _loaded = true;
+    state = messages;
+  }
+
+  void _persist() {
+    if (!_loaded) return;
+    _dao.replaceAll(state);
+  }
+
+  /// 追加消息并持久化
+  void add(ChatMessage message) {
+    state = [...state, message];
+    _persist();
+  }
+
+  /// 追加或替换最后一条 assistant 消息（流式输出中不持久化）
+  void upsertAssistant(String content) {
+    final msg = ChatMessage(role: 'assistant', content: content);
+    if (state.isNotEmpty && state.last.role == 'assistant') {
+      state = [...state.sublist(0, state.length - 1), msg];
+    } else {
+      state = [...state, msg];
+    }
+  }
+
+  /// 强制落库当前对话（流式结束后调用）
+  void persistNow() => _persist();
+
+  /// 清空对话并删除数据库记录
+  void clearAll() {
+    state = const [];
+    _dao.clear();
+  }
 }
 
-final aiChatMessagesProvider = StateProvider<List<AiChatMessage>>((ref) => []);
+final aiChatMessagesProvider =
+    StateNotifierProvider<AiChatController, List<ChatMessage>>(
+  (ref) => AiChatController(ref.read(aiChatDaoProvider)),
+);
 
 /// 大纲编辑器中当前选中的节点
 final selectedOutlineNodeProvider = StateProvider<OutlineNode?>((ref) => null);

@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/database/database.dart';
 import '../../../core/database/providers.dart';
@@ -41,6 +42,8 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
   DateTime? _sessionStart;
   int _sessionStartWordCount = 0;
   String? _activeSessionId;
+  String? _lastSavedContent;
+  String? _lastSavedTitle;
   Timer? _statusTimer;
   final _undoStack = UndoStack();
   Timer? _undoTimer;
@@ -82,13 +85,95 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
     _saveDebounce?.cancel();
     final chapterDao = ref.read(chapterDaoProvider);
     final bookDao = ref.read(bookDaoProvider);
-    await chapterDao.updateChapterContent(_currentChapterId!, _contentController.text);
-    await chapterDao.updateChapterTitle(_currentChapterId!, _titleController.text);
+    final content = _contentController.text;
+    final title = _titleController.text;
+    if (content == _lastSavedContent && title == _lastSavedTitle) {
+      return;
+    }
+    // 保存前先把当前已落库版本存为快照（版本回退用）
+    if (_lastSavedContent != null) {
+      final snapshotDao = ref.read(snapshotDaoProvider);
+      await snapshotDao.createSnapshot(_currentChapterId!, _lastSavedTitle!, _lastSavedContent!);
+    }
+    await chapterDao.updateChapterContent(_currentChapterId!, content);
+    await chapterDao.updateChapterTitle(_currentChapterId!, title);
+    _lastSavedContent = content;
+    _lastSavedTitle = title;
     final bookId = ref.read(selectedBookProvider);
     if (bookId != null) {
       await bookDao.recalculateBookWordCount(bookId);
     }
     ref.read(treeRefreshProvider.notifier).state++;
+  }
+
+  /// 版本历史对话框
+  Future<void> _showHistoryDialog() async {
+    final chapterId = _currentChapterId;
+    if (chapterId == null) return;
+    final snapshotDao = ref.read(snapshotDaoProvider);
+    final snapshots = await snapshotDao.getSnapshots(chapterId);
+    if (!mounted) return;
+
+    if (snapshots.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('暂无历史版本（保存一次修改后自动记录）'), duration: Duration(seconds: 2)),
+      );
+      return;
+    }
+
+    final picked = await showDialog<_RestoreTarget>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('历史版本'),
+        content: SizedBox(
+          width: 480,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: snapshots.length,
+            itemBuilder: (_, i) {
+              final s = snapshots[i];
+              final time = DateFormat('MM-dd HH:mm').format(s.createdAt);
+              final words = s.content.length;
+              return ListTile(
+                dense: true,
+                leading: const Icon(Icons.history),
+                title: Text('${s.title}  ($words字)', maxLines: 1, overflow: TextOverflow.ellipsis),
+                subtitle: Text('$time · 字数 $words'),
+                trailing: const Icon(Icons.restore, size: 18),
+                onTap: () => Navigator.pop(ctx, _RestoreTarget(s)),
+              );
+            },
+          ),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消'))],
+      ),
+    );
+    if (picked == null || !mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('恢复到「${picked.snapshot.title}」？'),
+        content: const Text('恢复后当前未保存的改动将被覆盖，建议先复制备份。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('恢复')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    _contentController.text = picked.snapshot.content;
+    _titleController.text = picked.snapshot.title;
+    _undoStack.clear();
+    _undoStack.push(_contentController.value);
+    _onContentChanged(picked.snapshot.content);
+    await _saveImmediately();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('已恢复历史版本'), duration: Duration(seconds: 2)),
+      );
+    }
   }
 
   // ===== 缩进常量 =====
@@ -196,6 +281,11 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
           const SizedBox(width: 12),
           // 大纲切换
           _toolButton(theme, _showOutline ? Icons.list_alt : Icons.list_alt_outlined, '显示/隐藏章纲', () => setState(() => _showOutline = !_showOutline)),
+          const SizedBox(width: 12),
+          Container(height: 18, width: 1, color: theme.colorScheme.surfaceContainerHighest),
+          const SizedBox(width: 12),
+          // 历史版本
+          _toolButton(theme, Icons.history, '历史版本（保存修改时自动记录快照）', _showHistoryDialog),
         ],
       ),
     );
@@ -502,6 +592,8 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
       if (chapter != null && mounted) {
         _contentController.text = chapter.content;
         _titleController.text = chapter.title;
+        _lastSavedContent = chapter.content;
+        _lastSavedTitle = chapter.title;
         _undoStack.clear();
         _undoStack.push(_contentController.value);
         setState(() {
@@ -623,4 +715,10 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
       ),
     );
   }
+}
+
+/// 历史版本恢复目标
+class _RestoreTarget {
+  final ChapterSnapshot snapshot;
+  const _RestoreTarget(this.snapshot);
 }

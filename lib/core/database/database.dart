@@ -5,7 +5,9 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import 'tables/ai_chat_messages.dart';
 import 'tables/books.dart';
+import 'tables/chapter_snapshots.dart';
 import 'tables/chapters.dart';
 import 'tables/character_relations.dart';
 import 'tables/characters.dart';
@@ -30,13 +32,15 @@ part 'database.g.dart';
     PlotLines,
     PlotNodes,
     WritingSessions,
+    AiChatMessages,
+    ChapterSnapshots,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration {
@@ -62,6 +66,10 @@ class AppDatabase extends _$AppDatabase {
         if (from < 3) {
           await m.addColumn(outlineNodes, outlineNodes.bookId);
           await m.addColumn(outlineNodes, outlineNodes.status);
+        }
+        if (from < 4) {
+          await m.createTable(aiChatMessages);
+          await m.createTable(chapterSnapshots);
         }
       },
     );

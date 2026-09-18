@@ -1,11 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'daos/ai_chat_dao.dart';
 import 'daos/book_dao.dart';
 import 'daos/chapter_dao.dart';
 import 'daos/character_dao.dart';
 import 'daos/outline_dao.dart';
 import 'daos/plot_dao.dart';
 import 'daos/session_dao.dart';
+import 'daos/snapshot_dao.dart';
 import 'daos/volume_dao.dart';
 import 'database.dart';
 
@@ -41,4 +43,12 @@ final outlineDaoProvider = Provider<OutlineDao>((ref) {
 
 final sessionDaoProvider = Provider<SessionDao>((ref) {
   return SessionDao(ref.watch(databaseProvider));
+});
+
+final aiChatDaoProvider = Provider<AiChatDao>((ref) {
+  return AiChatDao(ref.watch(databaseProvider));
+});
+
+final snapshotDaoProvider = Provider<SnapshotDao>((ref) {
+  return SnapshotDao(ref.watch(databaseProvider));
 });
