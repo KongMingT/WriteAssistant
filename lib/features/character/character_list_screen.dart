@@ -103,40 +103,58 @@ class _CharacterListScreenState extends ConsumerState<CharacterListScreen> {
 
   Widget _buildCard(Character c, ThemeData theme) {
     final roleLabel = {'protagonist': '主角', 'antagonist': '反派', 'supporting': '配角'}[c.roleType] ?? c.roleType;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        onTap: () => _editCharacter(character: c),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(children: [
-            CircleAvatar(
-              backgroundColor: c.roleType == 'protagonist'
-                  ? Colors.blue.withAlpha(30)
-                  : c.roleType == 'antagonist'
-                      ? Colors.red.withAlpha(30)
-                      : Colors.grey.withAlpha(30),
-              child: Text(c.name.isNotEmpty ? c.name[0] : '?', style: const TextStyle(fontWeight: FontWeight.w600)),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(c.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 2),
-                  Row(children: [
-                    _tag(roleLabel, theme),
-                    if (c.gender != null && c.gender!.isNotEmpty) ...[const SizedBox(width: 6), _tag(c.gender!, theme)],
-                  ]),
-                ],
+    return Tooltip(
+      message: _characterInfo(c, roleLabel),
+      waitDuration: const Duration(milliseconds: 400),
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 8),
+        child: InkWell(
+          onTap: () => _editCharacter(character: c),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(children: [
+              CircleAvatar(
+                backgroundColor: c.roleType == 'protagonist'
+                    ? Colors.blue.withAlpha(30)
+                    : c.roleType == 'antagonist'
+                        ? Colors.red.withAlpha(30)
+                        : Colors.grey.withAlpha(30),
+                child: Text(c.name.isNotEmpty ? c.name[0] : '?', style: const TextStyle(fontWeight: FontWeight.w600)),
               ),
-            ),
-            Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
-          ]),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(c.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 2),
+                    Row(children: [
+                      _tag(roleLabel, theme),
+                      if (c.gender != null && c.gender!.isNotEmpty) ...[const SizedBox(width: 6), _tag(c.gender!, theme)],
+                    ]),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
+            ]),
+          ),
         ),
       ),
     );
+  }
+
+  /// 悬浮提示内容
+  String _characterInfo(Character c, String roleLabel) {
+    final fields = <String>[
+      if (c.gender != null && c.gender!.isNotEmpty) '性别：${c.gender}',
+      if (c.age != null && c.age!.isNotEmpty) '年龄：${c.age}',
+      if (c.personality != null && c.personality!.isNotEmpty) '性格：${c.personality}',
+      if (c.background != null && c.background!.isNotEmpty) '背景：${c.background}',
+      if (c.appearance != null && c.appearance!.isNotEmpty) '外貌：${c.appearance}',
+      if (c.notes != null && c.notes!.isNotEmpty) '备注：${c.notes}',
+    ];
+    final body = fields.isEmpty ? '暂无详细信息' : fields.join('\n');
+    return '【${c.name} · $roleLabel】\n$body';
   }
 
   Widget _tag(String text, ThemeData theme) {

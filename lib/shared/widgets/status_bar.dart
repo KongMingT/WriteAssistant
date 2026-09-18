@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/database/providers.dart';
 import '../../features/workspace/models/selection_state.dart';
 import '../themes/theme_provider.dart';
+import 'daily_goal_provider.dart';
 import 'writing_stats_dialog.dart';
 
 /// 底部状态栏 - 显示字数、码字速度、今日累计等
@@ -14,6 +15,7 @@ class StatusBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(writingStateProvider);
     final todayCount = ref.watch(todayWordCountProvider).valueOrNull ?? 0;
+    final dailyGoal = ref.watch(dailyGoalProvider);
     final theme = Theme.of(context);
     return Container(
       height: 32,
@@ -40,6 +42,36 @@ class StatusBar extends ConsumerWidget {
               child: _StatusItem(icon: Icons.today_outlined, label: '今日', value: '$todayCount'),
             ),
           ),
+          if (dailyGoal > 0) ...[
+            const SizedBox(width: 24),
+            // 每日目标进度（点击设置目标）
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () => _showGoalDialog(context, dailyGoal),
+                child: _GoalProgress(todayCount: todayCount, goal: dailyGoal, theme: theme),
+              ),
+            ),
+          ] else ...[
+            const SizedBox(width: 24),
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () => _showGoalDialog(context, dailyGoal),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.flag_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                    const SizedBox(width: 4),
+                    Text(
+                      '设每日目标',
+                      style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           const Spacer(),
           _buildContextStatus(ref, theme),
           IconButton(
@@ -129,4 +161,108 @@ Widget _buildContextStatus(WidgetRef ref, ThemeData theme) {
       ],
     ),
   );
+}
+
+/// 每日目标进度（文字 + 迷你进度条 + 达成标识）
+class _GoalProgress extends StatelessWidget {
+  const _GoalProgress({required this.todayCount, required this.goal, required this.theme});
+
+  final int todayCount;
+  final int goal;
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context) {
+    final reached = todayCount >= goal;
+    final progress = (todayCount / goal).clamp(0.0, 1.0).toDouble();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          reached ? Icons.emoji_events : Icons.flag_outlined,
+          size: 14,
+          color: reached ? Colors.amber : theme.colorScheme.onSurfaceVariant,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          reached ? '$goal 达成!' : '$todayCount/$goal',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: reached ? Colors.amber : theme.colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(width: 6),
+        SizedBox(
+          width: 80,
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 4,
+            backgroundColor: theme.colorScheme.surfaceContainerHighest,
+            color: reached ? Colors.amber : theme.colorScheme.primary,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Icon(Icons.tune, size: 12, color: theme.colorScheme.onSurfaceVariant),
+      ],
+    );
+  }
+}
+
+/// 每日目标设置对话框
+Future<void> _showGoalDialog(BuildContext context, int currentGoal) async {
+  final controller = TextEditingController(text: currentGoal > 0 ? '$currentGoal' : '');
+  const presets = [2000, 3000, 5000, 10000];
+
+  final result = await showDialog<int>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('每日写作目标'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('设定每日目标字数，状态栏显示进度，达成后自动高亮🎉', style: TextStyle(fontSize: 12)),
+          const SizedBox(height: 12),
+          TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: '目标字数', hintText: '如 3000'),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 6,
+            children: presets.map((p) {
+              return ActionChip(
+                label: Text('$p'),
+                onPressed: () {
+                  controller.text = '$p';
+                },
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, 0),
+          child: const Text('不设目标'),
+        ),
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, int.tryParse(controller.text.trim()) ?? 0),
+          child: const Text('保存'),
+        ),
+      ],
+    ),
+  );
+
+  if (result != null) {
+    ProviderScope.containerOf(context, listen: false).read(dailyGoalProvider.notifier).setGoal(result);
+    if (result > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('每日目标已设置为 $result 字'), duration: const Duration(seconds: 2)),
+      );
+    }
+  }
 }
