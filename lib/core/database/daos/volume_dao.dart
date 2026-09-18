@@ -33,4 +33,14 @@ class VolumeDao extends DatabaseAccessor<AppDatabase> {
   Future<void> deleteVolume(String id) async {
     await (delete(db.volumes)..where((v) => v.id.equals(id))).go();
   }
+
+  /// 批量更新卷排序（事务）
+  Future<void> reorderVolumes(List<String> orderedIds) async {
+    await db.transaction(() async {
+      for (var i = 0; i < orderedIds.length; i++) {
+        await (update(db.volumes)..where((v) => v.id.equals(orderedIds[i])))
+            .write(VolumesCompanion(sortOrder: Value(i)));
+      }
+    });
+  }
 }

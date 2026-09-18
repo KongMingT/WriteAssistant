@@ -54,4 +54,20 @@ class ChapterDao extends DatabaseAccessor<AppDatabase> {
   Future<void> deleteChapter(String id) async {
     await (delete(db.chapters)..where((c) => c.id.equals(id))).go();
   }
+
+  /// 批量更新章节排序（跨卷移动通过 volumeId 传入，事务）：
+  /// 传入顺序即为最终顺序，索引写为 sortOrder。
+  Future<void> reorderChapters(List<({String id, String volumeId})> ordered) async {
+    await db.transaction(() async {
+      for (var i = 0; i < ordered.length; i++) {
+        final entry = ordered[i];
+        await (update(db.chapters)..where((c) => c.id.equals(entry.id)))
+            .write(ChaptersCompanion(
+          volumeId: Value(entry.volumeId),
+          sortOrder: Value(i),
+          updatedAt: Value(DateTime.now()),
+        ));
+      }
+    });
+  }
 }

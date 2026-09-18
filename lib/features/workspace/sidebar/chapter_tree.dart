@@ -239,40 +239,98 @@ class _ChapterTreeState extends ConsumerState<ChapterTree> {
       );
     }
 
-    return ListView(
+    final children = <Widget>[];
+    for (final vol in _volumes) {
+      children.add(KeyedSubtree(
+        key: ValueKey('v:${vol.id}'),
+        child: _buildVolumeHeader(vol, theme),
+      ));
+      for (final chap in _chapters.where((c) => c.volumeId == vol.id)) {
+        children.add(KeyedSubtree(
+          key: ValueKey('c:${chap.id}'),
+          child: _buildChapterItem(chap, theme),
+        ));
+      }
+    }
+
+    return ReorderableListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      children: _volumes.map((vol) => _buildVolumeWithChapters(vol, theme)).toList(),
+      buildDefaultDragHandles: false,
+      itemCount: children.length,
+      onReorder: _handleReorder,
+      itemBuilder: (context, index) => children[index],
     );
   }
 
-  Widget _buildVolumeWithChapters(Volume vol, ThemeData theme) {
+  /// 展平当前目录顺序：'v:卷id' 或 'c:章节id'
+  List<String> _flattenOrder() {
+    final result = <String>[];
+    for (final vol in _volumes) {
+      result.add('v:${vol.id}');
+      for (final chap in _chapters.where((c) => c.volumeId == vol.id)) {
+        result.add('c:${chap.id}');
+      }
+    }
+    return result;
+  }
+
+  Future<void> _handleReorder(int oldIndex, int newIndex) async {
+    if (newIndex > oldIndex) newIndex -= 1;
+    final order = _flattenOrder();
+    if (oldIndex < 0 || oldIndex >= order.length) return;
+    final item = order.removeAt(oldIndex);
+    order.insert(newIndex.clamp(0, order.length), item);
+
+    final volumeDao = ref.read(volumeDaoProvider);
+    final chapterDao = ref.read(chapterDaoProvider);
+    final volumeIds = order.where((s) => s.startsWith('v:')).map((s) => s.substring(2)).toList();
+    await volumeDao.reorderVolumes(volumeIds);
+
+    String? currentVolumeId = volumeIds.isNotEmpty ? volumeIds.first : null;
+    final chapterEntries = <({String id, String volumeId})>[];
+    for (final s in order) {
+      if (s.startsWith('v:')) {
+        currentVolumeId = s.substring(2);
+      } else if (s.startsWith('c:') && currentVolumeId != null) {
+        chapterEntries.add((id: s.substring(2), volumeId: currentVolumeId));
+      }
+    }
+    await chapterDao.reorderChapters(chapterEntries);
+    await _loadData();
+    ref.read(treeRefreshProvider.notifier).state++;
+  }
+
+  Widget _buildVolumeHeader(Volume vol, ThemeData theme) {
     final volChapters = _chapters.where((c) => c.volumeId == vol.id).toList();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _ContextMenuRegion(
-          items: [
-            ContextMenuItem(label: '新建章节', icon: Icons.add, onTap: () => _createChapter(inVolumeId: vol.id)),
-            ContextMenuItem(label: '重命名', icon: Icons.edit_outlined, onTap: () => _renameVolume(vol)),
-            ContextMenuItem(label: '删除', icon: Icons.delete_outline, onTap: () => _deleteVolume(vol), isDestructive: true),
-          ],
-          child: Padding(
-            padding: const EdgeInsets.only(left: 12, top: 2, bottom: 2, right: 12),
-            child: Row(children: [
-              Icon(Icons.folder_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
-              const SizedBox(width: 4),
-              Expanded(child: Text(vol.title, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant))),
-              Text('${volChapters.length}章', style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant.withAlpha(120))),
-            ]),
-          ),
-        ),
-        ...volChapters.map((chap) => _buildChapterItem(chap, theme)),
+    final index = _flattenOrder().indexOf('v:${vol.id}');
+    return _ContextMenuRegion(
+      items: [
+        ContextMenuItem(label: '新建章节', icon: Icons.add, onTap: () => _createChapter(inVolumeId: vol.id)),
+        ContextMenuItem(label: '重命名', icon: Icons.edit_outlined, onTap: () => _renameVolume(vol)),
+        ContextMenuItem(label: '删除', icon: Icons.delete_outline, onTap: () => _deleteVolume(vol), isDestructive: true),
       ],
+      child: Padding(
+        padding: const EdgeInsets.only(left: 12, top: 2, bottom: 2, right: 6),
+        child: Row(children: [
+          Icon(Icons.folder_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: 4),
+          Expanded(child: Text(vol.title, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant))),
+          Text('${volChapters.length}章', style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant.withAlpha(120))),
+          ReorderableDragStartListener(
+            index: index,
+            child: const Padding(
+              padding: EdgeInsets.only(left: 6),
+              child: Icon(Icons.drag_indicator, size: 14, color: Colors.grey),
+            ),
+          ),
+        ]),
+      ),
     );
   }
 
   Widget _buildChapterItem(Chapter chapter, ThemeData theme) {
     final isSelected = chapter.id == _selectedChapterId;
+    final index = _flattenOrder().indexOf('c:${chapter.id}');
     return _ContextMenuRegion(
       items: [
         ContextMenuItem(label: '重命名', icon: Icons.edit_outlined, onTap: () => _renameChapter(chapter)),
@@ -281,7 +339,7 @@ class _ChapterTreeState extends ConsumerState<ChapterTree> {
       child: InkWell(
         onTap: () => _selectChapter(chapter.id),
         child: Container(
-          padding: const EdgeInsets.only(left: 28, top: 4, bottom: 4, right: 12),
+          padding: const EdgeInsets.only(left: 28, top: 4, bottom: 4, right: 6),
           decoration: BoxDecoration(
             color: isSelected ? theme.colorScheme.primaryContainer.withAlpha(100) : null,
             border: isSelected ? Border(left: BorderSide(color: theme.colorScheme.primary, width: 2)) : null,
@@ -299,6 +357,13 @@ class _ChapterTreeState extends ConsumerState<ChapterTree> {
                 overflow: TextOverflow.ellipsis)),
             if (chapter.wordCount > 0)
               Text('${chapter.wordCount}', style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
+            ReorderableDragStartListener(
+              index: index,
+              child: const Padding(
+                padding: EdgeInsets.only(left: 6),
+                child: Icon(Icons.drag_indicator, size: 14, color: Colors.grey),
+              ),
+            ),
           ]),
         ),
       ),
