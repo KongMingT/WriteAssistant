@@ -29,6 +29,7 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> {
   double _aiPanelWidth = 300;
   bool _sidebarCollapsed = false;
   bool _aiPanelCollapsed = false;
+  bool _immersiveMode = false;
   final _focusNode = FocusNode();
   String _bookTitle = '';
 
@@ -94,6 +95,12 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> {
       case LogicalKeyboardKey.keyN:
         ref.read(newChapterRequestProvider.notifier).state++;
         return KeyEventResult.handled;
+      case LogicalKeyboardKey.keyM:
+        if (HardwareKeyboard.instance.isShiftPressed) {
+          setState(() => _immersiveMode = !_immersiveMode);
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
       default:
         return KeyEventResult.ignored;
     }
@@ -164,35 +171,37 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> {
         body: Column(
           children: [
             Expanded(
-              child: Row(
-                children: [
-                  if (!_sidebarCollapsed)
-                    _buildResizablePanel(
-                      width: _sidebarWidth, minWidth: 180, maxWidth: 400,
-                      onResize: (w) => setState(() => _sidebarWidth = w),
-                      child: ChapterTree(bookId: widget.bookId),
+              child: _immersiveMode
+                  ? const ChapterEditor()
+                  : Row(
+                      children: [
+                        if (!_sidebarCollapsed)
+                          _buildResizablePanel(
+                            width: _sidebarWidth, minWidth: 180, maxWidth: 400,
+                            onResize: (w) => setState(() => _sidebarWidth = w),
+                            child: ChapterTree(bookId: widget.bookId),
+                          ),
+                        _buildCollapseHandle(
+                          collapsed: _sidebarCollapsed,
+                          onToggle: () => setState(() => _sidebarCollapsed = !_sidebarCollapsed),
+                          isLeft: true,
+                        ),
+                        const Expanded(child: ChapterEditor()),
+                        _buildCollapseHandle(
+                          collapsed: _aiPanelCollapsed,
+                          onToggle: () => setState(() => _aiPanelCollapsed = !_aiPanelCollapsed),
+                          isLeft: false,
+                        ),
+                        if (!_aiPanelCollapsed)
+                          _buildResizablePanel(
+                            width: _aiPanelWidth, minWidth: 250, maxWidth: 500,
+                            onResize: (w) => setState(() => _aiPanelWidth = w),
+                            child: const AiPanel(),
+                          ),
+                      ],
                     ),
-                  _buildCollapseHandle(
-                    collapsed: _sidebarCollapsed,
-                    onToggle: () => setState(() => _sidebarCollapsed = !_sidebarCollapsed),
-                    isLeft: true,
-                  ),
-                  const Expanded(child: ChapterEditor()),
-                  _buildCollapseHandle(
-                    collapsed: _aiPanelCollapsed,
-                    onToggle: () => setState(() => _aiPanelCollapsed = !_aiPanelCollapsed),
-                    isLeft: false,
-                  ),
-                  if (!_aiPanelCollapsed)
-                    _buildResizablePanel(
-                      width: _aiPanelWidth, minWidth: 250, maxWidth: 500,
-                      onResize: (w) => setState(() => _aiPanelWidth = w),
-                      child: const AiPanel(),
-                    ),
-                ],
-              ),
             ),
-            const StatusBar(),
+            if (!_immersiveMode) const StatusBar(),
           ],
         ),
       ),
@@ -209,6 +218,11 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> {
       title: Text(_bookTitle.isEmpty ? '加载中...' : _bookTitle),
       centerTitle: false,
       actions: [
+        IconButton(
+          icon: Icon(_immersiveMode ? Icons.fullscreen_exit : Icons.fullscreen),
+          tooltip: _immersiveMode ? '退出沉浸模式 (Ctrl+Shift+M)' : '沉浸模式 (Ctrl+Shift+M)',
+          onPressed: () => setState(() => _immersiveMode = !_immersiveMode),
+        ),
         PopupMenuButton<String>(
           icon: const Icon(Icons.file_download_outlined),
           tooltip: '导出',
