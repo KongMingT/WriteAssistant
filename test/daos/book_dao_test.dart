@@ -23,7 +23,7 @@ void main() {
     test('insert and get all books', () async {
       await dao.insertBook(BooksCompanion(
         id: Value(generateId()),
-        title: Value('Test Book'),
+        title: const Value('Test Book'),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
@@ -42,7 +42,7 @@ void main() {
       final id = generateId();
       await dao.insertBook(BooksCompanion(
         id: Value(id),
-        title: Value('Original'),
+        title: const Value('Original'),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
@@ -58,7 +58,7 @@ void main() {
       final id = generateId();
       await dao.insertBook(BooksCompanion(
         id: Value(id),
-        title: Value('To Delete'),
+        title: const Value('To Delete'),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
@@ -72,7 +72,7 @@ void main() {
       final bookId = generateId();
       await dao.insertBook(BooksCompanion(
         id: Value(bookId),
-        title: Value('Cascade'),
+        title: const Value('Cascade'),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
@@ -81,8 +81,8 @@ void main() {
       await db.into(db.volumes).insert(VolumesCompanion(
         id: Value(volumeId),
         bookId: Value(bookId),
-        title: Value('V1'),
-        sortOrder: Value(1),
+        title: const Value('V1'),
+        sortOrder: const Value(1),
         createdAt: Value(DateTime.now()),
       ));
 
@@ -90,10 +90,10 @@ void main() {
       await db.into(db.chapters).insert(ChaptersCompanion(
         id: Value(chapterId),
         volumeId: Value(volumeId),
-        title: Value('Ch1'),
-        content: Value('abcdefg'),
-        wordCount: Value(7),
-        sortOrder: Value(1),
+        title: const Value('Ch1'),
+        content: const Value('abcdefg'),
+        wordCount: const Value(7),
+        sortOrder: const Value(1),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
@@ -156,7 +156,7 @@ void main() {
       final bookId = generateId();
       await dao.insertBook(BooksCompanion(
         id: Value(bookId),
-        title: Value('WCTest'),
+        title: const Value('WCTest'),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
@@ -165,18 +165,18 @@ void main() {
       await db.into(db.volumes).insert(VolumesCompanion(
         id: Value(volumeId),
         bookId: Value(bookId),
-        title: Value('V1'),
-        sortOrder: Value(1),
+        title: const Value('V1'),
+        sortOrder: const Value(1),
         createdAt: Value(DateTime.now()),
       ));
 
       await db.into(db.chapters).insert(ChaptersCompanion(
         id: Value(generateId()),
         volumeId: Value(volumeId),
-        title: Value('Ch1'),
-        content: Value('Hello World'),
-        wordCount: Value(11),
-        sortOrder: Value(1),
+        title: const Value('Ch1'),
+        content: const Value('Hello World'),
+        wordCount: const Value(11),
+        sortOrder: const Value(1),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
@@ -184,10 +184,10 @@ void main() {
       await db.into(db.chapters).insert(ChaptersCompanion(
         id: Value(generateId()),
         volumeId: Value(volumeId),
-        title: Value('Ch2'),
-        content: Value('Short'),
-        wordCount: Value(5),
-        sortOrder: Value(2),
+        title: const Value('Ch2'),
+        content: const Value('Short'),
+        wordCount: const Value(5),
+        sortOrder: const Value(2),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));

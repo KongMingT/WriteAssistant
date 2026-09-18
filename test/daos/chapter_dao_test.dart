@@ -11,16 +11,16 @@ const _volumeId = 'chapter-test-volume';
 
 Future<void> _seedBookAndVolume(AppDatabase db) async {
   await db.into(db.books).insert(BooksCompanion(
-        id: Value(_bookId),
-        title: Value('Test Book'),
+        id: const Value(_bookId),
+        title: const Value('Test Book'),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
   await db.into(db.volumes).insert(VolumesCompanion(
-        id: Value(_volumeId),
-        bookId: Value(_bookId),
-        title: Value('V1'),
-        sortOrder: Value(1),
+        id: const Value(_volumeId),
+        bookId: const Value(_bookId),
+        title: const Value('V1'),
+        sortOrder: const Value(1),
         createdAt: Value(DateTime.now()),
       ));
 }
@@ -43,10 +43,10 @@ void main() {
     test('insert and get chapters by volume', () async {
       await dao.insertChapter(ChaptersCompanion(
         id: Value(generateId()),
-        volumeId: Value(_volumeId),
-        title: Value('第一章'),
-        content: Value(''),
-        sortOrder: Value(1),
+        volumeId: const Value(_volumeId),
+        title: const Value('第一章'),
+        content: const Value(''),
+        sortOrder: const Value(1),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
@@ -59,19 +59,19 @@ void main() {
     test('get chapters ordered by sortOrder', () async {
       await dao.insertChapter(ChaptersCompanion(
         id: Value(generateId()),
-        volumeId: Value(_volumeId),
-        title: Value('Ch2'),
-        content: Value(''),
-        sortOrder: Value(2),
+        volumeId: const Value(_volumeId),
+        title: const Value('Ch2'),
+        content: const Value(''),
+        sortOrder: const Value(2),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
       await dao.insertChapter(ChaptersCompanion(
         id: Value(generateId()),
-        volumeId: Value(_volumeId),
-        title: Value('Ch1'),
-        content: Value(''),
-        sortOrder: Value(1),
+        volumeId: const Value(_volumeId),
+        title: const Value('Ch1'),
+        content: const Value(''),
+        sortOrder: const Value(1),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
@@ -86,10 +86,10 @@ void main() {
       final id = generateId();
       await dao.insertChapter(ChaptersCompanion(
         id: Value(id),
-        volumeId: Value(_volumeId),
-        title: Value('Found'),
-        content: Value('text'),
-        sortOrder: Value(1),
+        volumeId: const Value(_volumeId),
+        title: const Value('Found'),
+        content: const Value('text'),
+        sortOrder: const Value(1),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
@@ -106,10 +106,10 @@ void main() {
       final id = generateId();
       await dao.insertChapter(ChaptersCompanion(
         id: Value(id),
-        volumeId: Value(_volumeId),
-        title: Value('Ch'),
-        content: Value('old content'),
-        sortOrder: Value(1),
+        volumeId: const Value(_volumeId),
+        title: const Value('Ch'),
+        content: const Value('old content'),
+        sortOrder: const Value(1),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
@@ -124,10 +124,10 @@ void main() {
       final id = generateId();
       await dao.insertChapter(ChaptersCompanion(
         id: Value(id),
-        volumeId: Value(_volumeId),
-        title: Value('Old Title'),
-        content: Value(''),
-        sortOrder: Value(1),
+        volumeId: const Value(_volumeId),
+        title: const Value('Old Title'),
+        content: const Value(''),
+        sortOrder: const Value(1),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
@@ -141,10 +141,10 @@ void main() {
       final id = generateId();
       await dao.insertChapter(ChaptersCompanion(
         id: Value(id),
-        volumeId: Value(_volumeId),
-        title: Value('To Delete'),
-        content: Value(''),
-        sortOrder: Value(1),
+        volumeId: const Value(_volumeId),
+        title: const Value('To Delete'),
+        content: const Value(''),
+        sortOrder: const Value(1),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));

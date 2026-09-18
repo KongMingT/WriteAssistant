@@ -150,7 +150,7 @@ class _OutlinePanelState extends ConsumerState<OutlinePanel> {
     if (_currentChapterId == null) return;
     final result = await showDialog<_OutlineNodeData>(
       context: context,
-      builder: (_) => _OutlineNodeDialog(),
+      builder: (_) => const _OutlineNodeDialog(),
     );
     if (result != null && mounted) {
       final dao = ref.read(outlineDaoProvider);
@@ -189,7 +189,7 @@ class _OutlinePanelState extends ConsumerState<OutlinePanel> {
         content: Text('确定删除「${node.title}」吗？'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('删除'), style: FilledButton.styleFrom(backgroundColor: Colors.red)),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), style: FilledButton.styleFrom(backgroundColor: Colors.red), child: const Text('删除')),
         ],
       ),
     );

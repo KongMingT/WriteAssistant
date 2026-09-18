@@ -12,24 +12,24 @@ const _chapterId = 'outline-test-chapter';
 
 Future<void> _seed(AppDatabase db) async {
   await db.into(db.books).insert(BooksCompanion(
-        id: Value(_bookId),
-        title: Value('Test Book'),
+        id: const Value(_bookId),
+        title: const Value('Test Book'),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
   await db.into(db.volumes).insert(VolumesCompanion(
-        id: Value(_volumeId),
-        bookId: Value(_bookId),
-        title: Value('V1'),
-        sortOrder: Value(1),
+        id: const Value(_volumeId),
+        bookId: const Value(_bookId),
+        title: const Value('V1'),
+        sortOrder: const Value(1),
         createdAt: Value(DateTime.now()),
       ));
   await db.into(db.chapters).insert(ChaptersCompanion(
-        id: Value(_chapterId),
-        volumeId: Value(_volumeId),
-        title: Value('Ch1'),
-        content: Value(''),
-        sortOrder: Value(1),
+        id: const Value(_chapterId),
+        volumeId: const Value(_volumeId),
+        title: const Value('Ch1'),
+        content: const Value(''),
+        sortOrder: const Value(1),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
@@ -53,9 +53,9 @@ void main() {
     test('insert and get nodes by chapter', () async {
       await dao.insertOutlineNode(OutlineNodesCompanion(
         id: Value(generateId()),
-        chapterId: Value(_chapterId),
-        title: Value('章纲1'),
-        sortOrder: Value(1),
+        chapterId: const Value(_chapterId),
+        title: const Value('章纲1'),
+        sortOrder: const Value(1),
       ));
 
       final nodes = await dao.getOutlineNodesByChapter(_chapterId);
@@ -66,15 +66,15 @@ void main() {
     test('get nodes ordered by sortOrder', () async {
       await dao.insertOutlineNode(OutlineNodesCompanion(
         id: Value(generateId()),
-        chapterId: Value(_chapterId),
-        title: Value('Node B'),
-        sortOrder: Value(2),
+        chapterId: const Value(_chapterId),
+        title: const Value('Node B'),
+        sortOrder: const Value(2),
       ));
       await dao.insertOutlineNode(OutlineNodesCompanion(
         id: Value(generateId()),
-        chapterId: Value(_chapterId),
-        title: Value('Node A'),
-        sortOrder: Value(1),
+        chapterId: const Value(_chapterId),
+        title: const Value('Node A'),
+        sortOrder: const Value(1),
       ));
 
       final nodes = await dao.getOutlineNodesByChapter(_chapterId);
@@ -87,9 +87,9 @@ void main() {
       final id = generateId();
       await dao.insertOutlineNode(OutlineNodesCompanion(
         id: Value(id),
-        chapterId: Value(_chapterId),
-        title: Value('Original'),
-        sortOrder: Value(1),
+        chapterId: const Value(_chapterId),
+        title: const Value('Original'),
+        sortOrder: const Value(1),
       ));
 
       final node = await dao.getOutlineNodesByChapter(_chapterId);
@@ -103,9 +103,9 @@ void main() {
       final id = generateId();
       await dao.insertOutlineNode(OutlineNodesCompanion(
         id: Value(id),
-        chapterId: Value(_chapterId),
-        title: Value('To Delete'),
-        sortOrder: Value(1),
+        chapterId: const Value(_chapterId),
+        title: const Value('To Delete'),
+        sortOrder: const Value(1),
       ));
 
       await dao.deleteOutlineNode(id);
@@ -123,10 +123,10 @@ void main() {
     test('getBookRoot returns the root node after insert', () async {
       await dao.insertOutlineNode(OutlineNodesCompanion(
         id: Value(generateId()),
-        bookId: Value(_bookId),
+        bookId: const Value(_bookId),
         chapterId: const Value(''),
-        title: Value('书籍大纲'),
-        sortOrder: Value(0),
+        title: const Value('书籍大纲'),
+        sortOrder: const Value(0),
         type: const Value('book_root'),
       ));
 
@@ -140,26 +140,26 @@ void main() {
     test('getOutlineByBook returns all book-level nodes', () async {
       await dao.insertOutlineNode(OutlineNodesCompanion(
         id: Value(generateId()),
-        bookId: Value(_bookId),
+        bookId: const Value(_bookId),
         chapterId: const Value(''),
-        title: Value('根节点'),
-        sortOrder: Value(0),
+        title: const Value('根节点'),
+        sortOrder: const Value(0),
         type: const Value('book_root'),
       ));
       await dao.insertOutlineNode(OutlineNodesCompanion(
         id: Value(generateId()),
-        bookId: Value(_bookId),
+        bookId: const Value(_bookId),
         chapterId: const Value(''),
-        title: Value('第一卷'),
-        sortOrder: Value(1),
+        title: const Value('第一卷'),
+        sortOrder: const Value(1),
         type: const Value('volume'),
       ));
       await dao.insertOutlineNode(OutlineNodesCompanion(
         id: Value(generateId()),
-        bookId: Value(_bookId),
+        bookId: const Value(_bookId),
         chapterId: const Value(''),
-        title: Value('第二卷'),
-        sortOrder: Value(2),
+        title: const Value('第二卷'),
+        sortOrder: const Value(2),
         type: const Value('volume'),
       ));
 
@@ -179,28 +179,28 @@ void main() {
       final parentId = generateId();
       await dao.insertOutlineNode(OutlineNodesCompanion(
         id: Value(parentId),
-        bookId: Value(_bookId),
+        bookId: const Value(_bookId),
         chapterId: const Value(''),
-        title: Value('第一卷'),
-        sortOrder: Value(1),
+        title: const Value('第一卷'),
+        sortOrder: const Value(1),
         type: const Value('volume'),
       ));
       await dao.insertOutlineNode(OutlineNodesCompanion(
         id: Value(generateId()),
-        bookId: Value(_bookId),
+        bookId: const Value(_bookId),
         chapterId: const Value(''),
         parentId: Value(parentId),
-        title: Value('第一章'),
-        sortOrder: Value(1),
+        title: const Value('第一章'),
+        sortOrder: const Value(1),
         type: const Value('chapter'),
       ));
       await dao.insertOutlineNode(OutlineNodesCompanion(
         id: Value(generateId()),
-        bookId: Value(_bookId),
+        bookId: const Value(_bookId),
         chapterId: const Value(''),
         parentId: Value(parentId),
-        title: Value('第二章'),
-        sortOrder: Value(2),
+        title: const Value('第二章'),
+        sortOrder: const Value(2),
         type: const Value('chapter'),
       ));
 
@@ -219,24 +219,24 @@ void main() {
       final nodes = [
         OutlineNodesCompanion(
           id: Value(generateId()),
-          bookId: Value(_bookId),
+          bookId: const Value(_bookId),
           chapterId: const Value(''),
-          title: Value('Node 1'),
-          sortOrder: Value(1),
+          title: const Value('Node 1'),
+          sortOrder: const Value(1),
         ),
         OutlineNodesCompanion(
           id: Value(generateId()),
-          bookId: Value(_bookId),
+          bookId: const Value(_bookId),
           chapterId: const Value(''),
-          title: Value('Node 2'),
-          sortOrder: Value(2),
+          title: const Value('Node 2'),
+          sortOrder: const Value(2),
         ),
         OutlineNodesCompanion(
           id: Value(generateId()),
-          bookId: Value(_bookId),
+          bookId: const Value(_bookId),
           chapterId: const Value(''),
-          title: Value('Node 3'),
-          sortOrder: Value(3),
+          title: const Value('Node 3'),
+          sortOrder: const Value(3),
         ),
       ];
 
@@ -248,17 +248,17 @@ void main() {
     test('deleteOutlineByBook removes all book nodes', () async {
       await dao.insertOutlineNode(OutlineNodesCompanion(
         id: Value(generateId()),
-        bookId: Value(_bookId),
+        bookId: const Value(_bookId),
         chapterId: const Value(''),
-        title: Value('Keep'),
-        sortOrder: Value(1),
+        title: const Value('Keep'),
+        sortOrder: const Value(1),
       ));
       await dao.insertOutlineNode(OutlineNodesCompanion(
         id: Value(generateId()),
-        bookId: Value(_bookId),
+        bookId: const Value(_bookId),
         chapterId: const Value(''),
-        title: Value('Also Keep'),
-        sortOrder: Value(2),
+        title: const Value('Also Keep'),
+        sortOrder: const Value(2),
       ));
 
       await dao.deleteOutlineByBook(_bookId);
@@ -269,24 +269,24 @@ void main() {
     test('deleteOutlineByBook does not affect other books', () async {
       const otherBook = 'other-test-book';
       await db.into(db.books).insert(BooksCompanion(
-        id: Value(otherBook),
-        title: Value('Other Book'),
+        id: const Value(otherBook),
+        title: const Value('Other Book'),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
       await dao.insertOutlineNode(OutlineNodesCompanion(
         id: Value(generateId()),
-        bookId: Value(_bookId),
+        bookId: const Value(_bookId),
         chapterId: const Value(''),
-        title: Value('Book1 Node'),
-        sortOrder: Value(1),
+        title: const Value('Book1 Node'),
+        sortOrder: const Value(1),
       ));
       await dao.insertOutlineNode(OutlineNodesCompanion(
         id: Value(generateId()),
-        bookId: Value(otherBook),
+        bookId: const Value(otherBook),
         chapterId: const Value(''),
-        title: Value('Other Node'),
-        sortOrder: Value(1),
+        title: const Value('Other Node'),
+        sortOrder: const Value(1),
       ));
 
       await dao.deleteOutlineByBook(_bookId);

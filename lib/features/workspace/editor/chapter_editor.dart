@@ -694,7 +694,7 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
     final speed = minutes > 0 ? (wordCount ~/ minutes) * 60 : 0;
     final hours = elapsed.inHours;
     final mins = elapsed.inMinutes % 60;
-    final duration = hours > 0 ? '$hours时${mins}分' : '$mins分';
+    final duration = hours > 0 ? '$hours时$mins分' : '$mins分';
     ref.read(writingStateProvider.notifier).state = WritingState(wordCount: wordCount, writingSpeed: speed, sessionDuration: duration);
   }
 

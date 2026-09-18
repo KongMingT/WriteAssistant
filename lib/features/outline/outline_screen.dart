@@ -275,8 +275,8 @@ class _OutlineScreenState extends ConsumerState<OutlineScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('删除'),
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('删除'),
           ),
         ],
       ),
@@ -713,7 +713,7 @@ class _OutlineScreenState extends ConsumerState<OutlineScreen> {
         const SizedBox(width: 4),
         Text('节点: $totalNodes', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
         const SizedBox(width: 16),
-        Icon(Icons.check_circle_outline, size: 14, color: Colors.green),
+        const Icon(Icons.check_circle_outline, size: 14, color: Colors.green),
         const SizedBox(width: 4),
         Text('已定稿: $finalNodes', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
         const SizedBox(width: 16),

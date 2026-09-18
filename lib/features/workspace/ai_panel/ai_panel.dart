@@ -635,7 +635,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
       ref.read(outlineTreeRefreshProvider.notifier).state++;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('已导入 $totalNodes 个大纲节点'), duration: Duration(seconds: 2)),
+          SnackBar(content: Text('已导入 $totalNodes 个大纲节点'), duration: const Duration(seconds: 2)),
         );
       }
     }
@@ -778,7 +778,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
       child: Row(children: [
         Icon(Icons.auto_awesome, size: 18, color: theme.colorScheme.primary),
         const SizedBox(width: 8),
-        Text('AI 助手', style: TextStyle(fontWeight: FontWeight.w600)),
+        const Text('AI 助手', style: TextStyle(fontWeight: FontWeight.w600)),
         const Spacer(),
         if (selectedCount > 0)
           Padding(
@@ -876,8 +876,8 @@ class _AiPanelState extends ConsumerState<AiPanel> {
                 if (selectedIds.isNotEmpty)
                   TextButton(
                     onPressed: () => ref.read(selectedContextChaptersProvider.notifier).state = {},
-                    child: Text('清除', style: TextStyle(fontSize: 11)),
                     style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 4), minimumSize: Size.zero),
+                    child: const Text('清除', style: TextStyle(fontSize: 11)),
                   ),
               ],
             ),

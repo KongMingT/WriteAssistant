@@ -10,8 +10,8 @@ const _bookId = 'char-test-book';
 
 Future<void> _seedBook(AppDatabase db) async {
   await db.into(db.books).insert(BooksCompanion(
-        id: Value(_bookId),
-        title: Value('Test Book'),
+        id: const Value(_bookId),
+        title: const Value('Test Book'),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
@@ -35,8 +35,8 @@ void main() {
     test('insert and get characters by book', () async {
       await dao.insertCharacter(CharactersCompanion(
         id: Value(generateId()),
-        bookId: Value(_bookId),
-        name: Value('Alice'),
+        bookId: const Value(_bookId),
+        name: const Value('Alice'),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
@@ -50,8 +50,8 @@ void main() {
       final id = generateId();
       await dao.insertCharacter(CharactersCompanion(
         id: Value(id),
-        bookId: Value(_bookId),
-        name: Value('Bob'),
+        bookId: const Value(_bookId),
+        name: const Value('Bob'),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
@@ -68,9 +68,9 @@ void main() {
       final id = generateId();
       await dao.insertCharacter(CharactersCompanion(
         id: Value(id),
-        bookId: Value(_bookId),
-        name: Value('Charlie'),
-        roleType: Value('protagonist'),
+        bookId: const Value(_bookId),
+        name: const Value('Charlie'),
+        roleType: const Value('protagonist'),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
@@ -90,8 +90,8 @@ void main() {
       final id = generateId();
       await dao.insertCharacter(CharactersCompanion(
         id: Value(id),
-        bookId: Value(_bookId),
-        name: Value('To Delete'),
+        bookId: const Value(_bookId),
+        name: const Value('To Delete'),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
@@ -107,7 +107,7 @@ void main() {
       for (final id in [charAId, charBId]) {
         await dao.insertCharacter(CharactersCompanion(
           id: Value(id),
-          bookId: Value(_bookId),
+          bookId: const Value(_bookId),
           name: Value('Char $id'),
           createdAt: Value(DateTime.now()),
           updatedAt: Value(DateTime.now()),
@@ -116,10 +116,10 @@ void main() {
 
       await dao.insertRelation(CharacterRelationsCompanion(
         id: Value(generateId()),
-        bookId: Value(_bookId),
+        bookId: const Value(_bookId),
         characterAId: Value(charAId),
         characterBId: Value(charBId),
-        relationType: Value('friends'),
+        relationType: const Value('friends'),
         createdAt: Value(DateTime.now()),
       ));
 
@@ -134,8 +134,8 @@ void main() {
       for (final id in [charAId, charBId]) {
         await dao.insertCharacter(CharactersCompanion(
           id: Value(id),
-          bookId: Value(_bookId),
-          name: Value('Char'),
+          bookId: const Value(_bookId),
+          name: const Value('Char'),
           createdAt: Value(DateTime.now()),
           updatedAt: Value(DateTime.now()),
         ));
@@ -144,10 +144,10 @@ void main() {
       final relId = generateId();
       await dao.insertRelation(CharacterRelationsCompanion(
         id: Value(relId),
-        bookId: Value(_bookId),
+        bookId: const Value(_bookId),
         characterAId: Value(charAId),
         characterBId: Value(charBId),
-        relationType: Value('rivals'),
+        relationType: const Value('rivals'),
         createdAt: Value(DateTime.now()),
       ));
 

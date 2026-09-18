@@ -131,7 +131,7 @@ class _ChapterTreeState extends ConsumerState<ChapterTree> {
         content: Text('确定删除「${chapter.title}」吗？'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('删除'), style: FilledButton.styleFrom(backgroundColor: Colors.red)),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), style: FilledButton.styleFrom(backgroundColor: Colors.red), child: const Text('删除')),
         ],
       ),
     );
@@ -151,7 +151,7 @@ class _ChapterTreeState extends ConsumerState<ChapterTree> {
         content: Text('确定删除「${vol.title}」吗？\n卷内所有章节也会被删除。'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('删除'), style: FilledButton.styleFrom(backgroundColor: Colors.red)),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), style: FilledButton.styleFrom(backgroundColor: Colors.red), child: const Text('删除')),
         ],
       ),
     );
@@ -398,7 +398,7 @@ class _ContextMenuRegion extends StatelessWidget {
             child: Row(children: [
               Icon(item.icon, size: 16, color: item.isDestructive ? Colors.red : null),
               const SizedBox(width: 8),
-              Text(item.label, style: item.isDestructive ? TextStyle(color: Colors.red) : null),
+              Text(item.label, style: item.isDestructive ? const TextStyle(color: Colors.red) : null),
             ]),
           )).toList(),
         );

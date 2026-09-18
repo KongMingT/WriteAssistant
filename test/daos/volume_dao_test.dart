@@ -10,8 +10,8 @@ const _bookId = 'volume-test-book';
 
 Future<void> _seedBook(AppDatabase db) async {
   await db.into(db.books).insert(BooksCompanion(
-        id: Value(_bookId),
-        title: Value('Test Book'),
+        id: const Value(_bookId),
+        title: const Value('Test Book'),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
@@ -35,9 +35,9 @@ void main() {
     test('insert and get volumes by book', () async {
       await dao.insertVolume(VolumesCompanion(
         id: Value(generateId()),
-        bookId: Value(_bookId),
-        title: Value('第一卷'),
-        sortOrder: Value(1),
+        bookId: const Value(_bookId),
+        title: const Value('第一卷'),
+        sortOrder: const Value(1),
         createdAt: Value(DateTime.now()),
       ));
 
@@ -49,16 +49,16 @@ void main() {
     test('get volumes ordered by sortOrder', () async {
       await dao.insertVolume(VolumesCompanion(
         id: Value(generateId()),
-        bookId: Value(_bookId),
-        title: Value('V2'),
-        sortOrder: Value(2),
+        bookId: const Value(_bookId),
+        title: const Value('V2'),
+        sortOrder: const Value(2),
         createdAt: Value(DateTime.now()),
       ));
       await dao.insertVolume(VolumesCompanion(
         id: Value(generateId()),
-        bookId: Value(_bookId),
-        title: Value('V1'),
-        sortOrder: Value(1),
+        bookId: const Value(_bookId),
+        title: const Value('V1'),
+        sortOrder: const Value(1),
         createdAt: Value(DateTime.now()),
       ));
 
@@ -72,9 +72,9 @@ void main() {
       final id = generateId();
       await dao.insertVolume(VolumesCompanion(
         id: Value(id),
-        bookId: Value(_bookId),
-        title: Value('Found'),
-        sortOrder: Value(1),
+        bookId: const Value(_bookId),
+        title: const Value('Found'),
+        sortOrder: const Value(1),
         createdAt: Value(DateTime.now()),
       ));
 
@@ -90,9 +90,9 @@ void main() {
       final id = generateId();
       await dao.insertVolume(VolumesCompanion(
         id: Value(id),
-        bookId: Value(_bookId),
-        title: Value('Original'),
-        sortOrder: Value(1),
+        bookId: const Value(_bookId),
+        title: const Value('Original'),
+        sortOrder: const Value(1),
         createdAt: Value(DateTime.now()),
       ));
 
@@ -107,9 +107,9 @@ void main() {
       final id = generateId();
       await dao.insertVolume(VolumesCompanion(
         id: Value(id),
-        bookId: Value(_bookId),
-        title: Value('To Delete'),
-        sortOrder: Value(1),
+        bookId: const Value(_bookId),
+        title: const Value('To Delete'),
+        sortOrder: const Value(1),
         createdAt: Value(DateTime.now()),
       ));
 

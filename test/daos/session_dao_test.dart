@@ -10,8 +10,8 @@ const _bookId = 'session-test-book';
 
 Future<void> _seedBook(AppDatabase db) async {
   await db.into(db.books).insert(BooksCompanion(
-        id: Value(_bookId),
-        title: Value('Test Book'),
+        id: const Value(_bookId),
+        title: const Value('Test Book'),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
@@ -35,7 +35,7 @@ void main() {
     test('start and get sessions by book', () async {
       await dao.startSession(WritingSessionsCompanion(
         id: Value(generateId()),
-        bookId: Value(_bookId),
+        bookId: const Value(_bookId),
         startTime: Value(DateTime.now()),
       ));
 
@@ -47,12 +47,12 @@ void main() {
       final now = DateTime.now();
       await dao.startSession(WritingSessionsCompanion(
         id: Value(generateId()),
-        bookId: Value(_bookId),
+        bookId: const Value(_bookId),
         startTime: Value(now.subtract(const Duration(hours: 2))),
       ));
       await dao.startSession(WritingSessionsCompanion(
         id: Value(generateId()),
-        bookId: Value(_bookId),
+        bookId: const Value(_bookId),
         startTime: Value(now),
       ));
 
@@ -65,7 +65,7 @@ void main() {
       final id = generateId();
       await dao.startSession(WritingSessionsCompanion(
         id: Value(id),
-        bookId: Value(_bookId),
+        bookId: const Value(_bookId),
         startTime: Value(DateTime.now()),
       ));
 
@@ -83,12 +83,12 @@ void main() {
       final newId = generateId();
       await dao.startSession(WritingSessionsCompanion(
         id: Value(oldId),
-        bookId: Value(_bookId),
+        bookId: const Value(_bookId),
         startTime: Value(now.subtract(const Duration(hours: 3))),
       ));
       await dao.startSession(WritingSessionsCompanion(
         id: Value(newId),
-        bookId: Value(_bookId),
+        bookId: const Value(_bookId),
         startTime: Value(now),
       ));
       // 分别结束：旧记录3小时前结束、新记录刚刚结束
@@ -104,7 +104,7 @@ void main() {
       final id = generateId();
       await dao.startSession(WritingSessionsCompanion(
         id: Value(id),
-        bookId: Value(_bookId),
+        bookId: const Value(_bookId),
         startTime: Value(DateTime.now()),
       ));
       await dao.endSession(id, 300);
@@ -119,7 +119,7 @@ void main() {
     test('deleteSessionsByBook removes book sessions', () async {
       await dao.startSession(WritingSessionsCompanion(
         id: Value(generateId()),
-        bookId: Value(_bookId),
+        bookId: const Value(_bookId),
         startTime: Value(DateTime.now()),
       ));
       await dao.deleteSessionsByBook(_bookId);

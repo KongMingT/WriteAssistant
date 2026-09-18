@@ -30,24 +30,24 @@ const _volumeId = 'compress-test-volume';
 
 Future<void> _seed(AppDatabase db) async {
   await db.into(db.books).insert(BooksCompanion(
-        id: Value(_bookId),
-        title: Value('Test Book'),
+        id: const Value(_bookId),
+        title: const Value('Test Book'),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
   await db.into(db.volumes).insert(VolumesCompanion(
-        id: Value(_volumeId),
-        bookId: Value(_bookId),
-        title: Value('V1'),
-        sortOrder: Value(1),
+        id: const Value(_volumeId),
+        bookId: const Value(_bookId),
+        title: const Value('V1'),
+        sortOrder: const Value(1),
         createdAt: Value(DateTime.now()),
       ));
   for (int i = 1; i <= 3; i++) {
-    final content = '这是第${i}章的核心内容。' * 30;
+    final content = '这是第$i章的核心内容。' * 30;
     await db.into(db.chapters).insert(ChaptersCompanion(
           id: Value('ch$i'),
-          volumeId: Value(_volumeId),
-          title: Value('第${i}章'),
+          volumeId: const Value(_volumeId),
+          title: Value('第$i章'),
           content: Value(content),
           sortOrder: Value(i),
           createdAt: Value(DateTime.now()),
@@ -113,11 +113,11 @@ void main() {
     test('compress overwrites existing outline nodes for the same chapter', () async {
       await outlineDao.insertOutlineNode(OutlineNodesCompanion(
         id: Value(generateId()),
-        bookId: Value(_bookId),
-        chapterId: Value('ch1'),
-        title: Value('旧章纲'),
-        content: Value('旧内容'),
-        sortOrder: Value(0),
+        bookId: const Value(_bookId),
+        chapterId: const Value('ch1'),
+        title: const Value('旧章纲'),
+        content: const Value('旧内容'),
+        sortOrder: const Value(0),
         type: const Value('section'),
       ));
 

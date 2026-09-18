@@ -2,7 +2,7 @@ import 'dart:io';
 
 void main() {
   final pngPath = '${Platform.environment['TEMP']}\\app_icon.png';
-  final icoPath = 'windows\\runner\\resources\\app_icon.ico';
+  const icoPath = 'windows\\runner\\resources\\app_icon.ico';
 
   final pngBytes = File(pngPath).readAsBytesSync();
   final pngSize = pngBytes.length;

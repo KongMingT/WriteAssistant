@@ -153,7 +153,7 @@ class _BookSelectionScreenState extends ConsumerState<BookSelectionScreen> {
         content: Text('确定删除「${book.title}」吗？\n所有卷和章节也会被删除。'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('删除'), style: FilledButton.styleFrom(backgroundColor: Colors.red)),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), style: FilledButton.styleFrom(backgroundColor: Colors.red), child: const Text('删除')),
         ],
       ),
     );

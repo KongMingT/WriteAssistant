@@ -10,8 +10,8 @@ const _bookId = 'plot-test-book';
 
 Future<void> _seedBook(AppDatabase db) async {
   await db.into(db.books).insert(BooksCompanion(
-        id: Value(_bookId),
-        title: Value('Test Book'),
+        id: const Value(_bookId),
+        title: const Value('Test Book'),
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       ));
@@ -35,9 +35,9 @@ void main() {
     test('insert and get plot lines by book', () async {
       await dao.insertPlotLine(PlotLinesCompanion(
         id: Value(generateId()),
-        bookId: Value(_bookId),
-        title: Value('主线'),
-        sortOrder: Value(1),
+        bookId: const Value(_bookId),
+        title: const Value('主线'),
+        sortOrder: const Value(1),
       ));
 
       final lines = await dao.getPlotLinesByBook(_bookId);
@@ -49,9 +49,9 @@ void main() {
       final id = generateId();
       await dao.insertPlotLine(PlotLinesCompanion(
         id: Value(id),
-        bookId: Value(_bookId),
-        title: Value('To Delete'),
-        sortOrder: Value(1),
+        bookId: const Value(_bookId),
+        title: const Value('To Delete'),
+        sortOrder: const Value(1),
       ));
 
       await dao.deletePlotLine(id);
@@ -63,16 +63,16 @@ void main() {
       final lineId = generateId();
       await dao.insertPlotLine(PlotLinesCompanion(
         id: Value(lineId),
-        bookId: Value(_bookId),
-        title: Value('Line'),
-        sortOrder: Value(1),
+        bookId: const Value(_bookId),
+        title: const Value('Line'),
+        sortOrder: const Value(1),
       ));
 
       await dao.insertPlotNode(PlotNodesCompanion(
         id: Value(generateId()),
         plotLineId: Value(lineId),
-        title: Value('Node 1'),
-        sortOrder: Value(1),
+        title: const Value('Node 1'),
+        sortOrder: const Value(1),
       ));
 
       final nodes = await dao.getPlotNodesByLine(lineId);
@@ -84,22 +84,22 @@ void main() {
       final lineId = generateId();
       await dao.insertPlotLine(PlotLinesCompanion(
         id: Value(lineId),
-        bookId: Value(_bookId),
-        title: Value('Line'),
-        sortOrder: Value(1),
+        bookId: const Value(_bookId),
+        title: const Value('Line'),
+        sortOrder: const Value(1),
       ));
 
       await dao.insertPlotNode(PlotNodesCompanion(
         id: Value(generateId()),
         plotLineId: Value(lineId),
-        title: Value('B'),
-        sortOrder: Value(2),
+        title: const Value('B'),
+        sortOrder: const Value(2),
       ));
       await dao.insertPlotNode(PlotNodesCompanion(
         id: Value(generateId()),
         plotLineId: Value(lineId),
-        title: Value('A'),
-        sortOrder: Value(1),
+        title: const Value('A'),
+        sortOrder: const Value(1),
       ));
 
       final nodes = await dao.getPlotNodesByLine(lineId);
@@ -112,17 +112,17 @@ void main() {
       final lineId = generateId();
       await dao.insertPlotLine(PlotLinesCompanion(
         id: Value(lineId),
-        bookId: Value(_bookId),
-        title: Value('Line'),
-        sortOrder: Value(1),
+        bookId: const Value(_bookId),
+        title: const Value('Line'),
+        sortOrder: const Value(1),
       ));
 
       final nodeId = generateId();
       await dao.insertPlotNode(PlotNodesCompanion(
         id: Value(nodeId),
         plotLineId: Value(lineId),
-        title: Value('To Delete'),
-        sortOrder: Value(1),
+        title: const Value('To Delete'),
+        sortOrder: const Value(1),
       ));
 
       await dao.deletePlotNode(nodeId);

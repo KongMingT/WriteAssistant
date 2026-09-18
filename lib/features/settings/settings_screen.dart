@@ -306,7 +306,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ref.read(aiContextConfigProvider.notifier).state =
                         AiContextConfig(maxChapters: v.first, maxChars: config.maxChars);
                   },
-                  style: ButtonStyle(
+                  style: const ButtonStyle(
                     visualDensity: VisualDensity.compact,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),

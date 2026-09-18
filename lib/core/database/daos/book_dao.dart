@@ -33,7 +33,7 @@ class BookDao extends DatabaseAccessor<AppDatabase> {
           .map((v) => v.id)
           .toList();
 
-      var chapterIds = <String>[];
+      final chapterIds = <String>[];
       for (final vid in volumeIds) {
         final chs = await (db.select(db.chapters)..where((c) => c.volumeId.equals(vid))).get();
         chapterIds.addAll(chs.map((c) => c.id));

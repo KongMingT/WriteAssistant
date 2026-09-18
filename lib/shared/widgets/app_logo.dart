@@ -41,16 +41,16 @@ class _LogoPainter extends CustomPainter {
     );
 
     final bgGradient = Paint()
-      ..shader = LinearGradient(
+      ..shader = const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          const Color(0xFF7C3AED),
-          const Color(0xFF4F46E5),
-          const Color(0xFF6366F1),
-          const Color(0xFF8B5CF6),
+          Color(0xFF7C3AED),
+          Color(0xFF4F46E5),
+          Color(0xFF6366F1),
+          Color(0xFF8B5CF6),
         ],
-        stops: const [0.0, 0.3, 0.7, 1.0],
+        stops: [0.0, 0.3, 0.7, 1.0],
       ).createShader(Rect.fromCenter(center: center, width: s, height: s));
 
     canvas.drawRRect(bgRect, bgGradient);
@@ -100,10 +100,10 @@ class _LogoPainter extends CustomPainter {
     _drawW(canvas, p1, p2, p3, p4, p5, strokeWidth,
         Paint()..style = PaintingStyle.stroke..strokeCap = StrokeCap.round
           ..strokeJoin = StrokeJoin.round
-          ..shader = LinearGradient(
+          ..shader = const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [const Color(0xFFE0E7FF), const Color(0xFFC7D2FE), Colors.white],
+            colors: [Color(0xFFE0E7FF), Color(0xFFC7D2FE), Colors.white],
           ).createShader(Rect.fromCenter(center: center, width: s, height: s)));
 
     // Highlight on upward segments

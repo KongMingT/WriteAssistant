@@ -188,7 +188,7 @@ class _BookAnalysisScreenState extends ConsumerState<BookAnalysisScreen> {
       ));
     }
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('已导入 ${chapters.length} 章到「${_fileName}」')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('已导入 ${chapters.length} 章到「$_fileName」')));
     }
   }
 }

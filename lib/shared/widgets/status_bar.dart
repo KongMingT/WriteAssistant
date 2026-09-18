@@ -257,7 +257,7 @@ Future<void> _showGoalDialog(BuildContext context, int currentGoal) async {
     ),
   );
 
-  if (result != null) {
+  if (result != null && context.mounted) {
     ProviderScope.containerOf(context, listen: false).read(dailyGoalProvider.notifier).setGoal(result);
     if (result > 0) {
       ScaffoldMessenger.of(context).showSnackBar(

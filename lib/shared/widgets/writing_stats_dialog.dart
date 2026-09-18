@@ -28,10 +28,12 @@ class _WritingStatsDialogState extends ConsumerState<WritingStatsDialog> {
     setState(() => _loading = true);
     final sessionDao = ref.read(sessionDaoProvider);
     final daily = await sessionDao.getDailyWordCounts(_days);
-    if (mounted) setState(() {
+    if (mounted) {
+      setState(() {
       _daily = daily;
       _loading = false;
     });
+    }
   }
 
   @override
@@ -95,7 +97,7 @@ class _WritingStatsDialogState extends ConsumerState<WritingStatsDialog> {
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             Text(
-                              d.words == 0 ? '' : '${_compact(d.words)}',
+                              d.words == 0 ? '' : _compact(d.words),
                               style: TextStyle(fontSize: 9, color: theme.colorScheme.onSurfaceVariant),
                             ),
                             const SizedBox(height: 2),

@@ -132,7 +132,7 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> {
     );
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已导出: ${chapter.title}.${format.extension}'), duration: Duration(seconds: 2)),
+        SnackBar(content: Text('已导出: ${chapter.title}.${format.extension}'), duration: const Duration(seconds: 2)),
       );
     }
   }
@@ -165,7 +165,7 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen> {
     );
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已导出: ${book.title}.${format.extension} (${chapters.length}章)'), duration: Duration(seconds: 2)),
+        SnackBar(content: Text('已导出: ${book.title}.${format.extension} (${chapters.length}章)'), duration: const Duration(seconds: 2)),
       );
     }
   }

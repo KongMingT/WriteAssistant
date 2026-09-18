@@ -5,15 +5,15 @@ import 'dart:typed_data';
 void main() {
   const size = 256;
   final pixels = Int32List(size * size);
-  final cx = size / 2, cy = size / 2;
-  final halfS = size / 2;
-  final radius = size * 0.22;
+  const cx = size / 2, cy = size / 2;
+  const halfS = size / 2;
+  const radius = size * 0.22;
 
   // Background rounded square with purple gradient
   for (int y = 0; y < size; y++) {
     for (int x = 0; x < size; x++) {
       final dx = (x - cx).abs(), dy = (y - cy).abs();
-      final hi = halfS - radius;
+      const hi = halfS - radius;
       double dist;
       if (dx > hi && dy > hi) {
         dist = math.sqrt((dx - hi) * (dx - hi) + (dy - hi) * (dy - hi));
@@ -60,9 +60,9 @@ void main() {
   }
 
   // Draw W
-  final w = size * 0.58, h = size * 0.46;
-  final lx = (size - w) / 2, ty = (size - h) / 2 + size * 0.04;
-  final sw = w * 0.16;
+  const w = size * 0.58, h = size * 0.46;
+  const lx = (size - w) / 2, ty = (size - h) / 2 + size * 0.04;
+  const sw = w * 0.16;
 
   void thickLine(double x1, double y1, double x2, double y2, double t, int r, int g, int b, int a) {
     final hf = t / 2;
@@ -124,7 +124,7 @@ void main() {
 
   // Build ICO (single image)
   final ico = _buildIco(png);
-  final icoPath = 'windows\\runner\\resources\\app_icon.ico';
+  const icoPath = 'windows\\runner\\resources\\app_icon.ico';
   File(icoPath).writeAsBytesSync(ico);
   print('Created ICO: $icoPath (${ico.length} bytes)');
 }
