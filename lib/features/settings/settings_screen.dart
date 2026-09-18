@@ -15,6 +15,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final Map<AiProvider, TextEditingController> _keyControllers = {};
+  final Map<AiProvider, TextEditingController> _endpointControllers = {};
+  final Map<AiProvider, TextEditingController> _modelControllers = {};
   AiProvider _activeProvider = AiProvider.deepseek;
   bool _isLoading = true;
   bool _obscureText = true;
@@ -24,6 +26,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     super.initState();
     for (final p in AiProvider.values) {
       _keyControllers[p] = TextEditingController();
+      _endpointControllers[p] = TextEditingController();
+      _modelControllers[p] = TextEditingController();
     }
     _loadSettings();
   }
@@ -31,6 +35,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   void dispose() {
     for (final c in _keyControllers.values) {
+      c.dispose();
+    }
+    for (final c in _endpointControllers.values) {
+      c.dispose();
+    }
+    for (final c in _modelControllers.values) {
       c.dispose();
     }
     super.dispose();
@@ -43,8 +53,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (key != null) {
         _keyControllers[p]?.text = key;
       }
+      final endpoint = await getCustomEndpoint(p);
+      if (endpoint != null) {
+        _endpointControllers[p]?.text = endpoint;
+      }
+      final model = await getCustomModel(p);
+      if (model != null) {
+        _modelControllers[p]?.text = model;
+      }
     }
     if (mounted) setState(() => _isLoading = false);
+  }
+
+  Future<void> _saveAdvanced(AiProvider provider) async {
+    final endpoint = _endpointControllers[provider]?.text.trim() ?? '';
+    final model = _modelControllers[provider]?.text.trim() ?? '';
+    if (endpoint.isEmpty && model.isEmpty) return;
+    if (endpoint.isNotEmpty) {
+      await saveCustomEndpoint(provider, endpoint);
+    } else {
+      await deleteCustomEndpoint(provider);
+    }
+    if (model.isNotEmpty) {
+      await saveCustomModel(provider, model);
+    } else {
+      await deleteCustomModel(provider);
+    }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${provider.displayName} 高级配置已保存')),
+      );
+    }
   }
 
   Future<void> _saveKey(AiProvider provider) async {
@@ -195,6 +234,48 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 onPressed: hasKey ? () => _saveKey(provider) : null,
                 child: const Text('保存'),
               ),
+            ),
+            const Divider(height: 24),
+            Text('高级配置（可选）', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _endpointControllers[provider],
+              decoration: InputDecoration(
+                labelText: '接口端点 (Endpoint)',
+                hintText: '默认: ${provider.defaultEndpoint}',
+                isDense: true,
+                border: const OutlineInputBorder(),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _modelControllers[provider],
+              decoration: InputDecoration(
+                labelText: '模型名称 (Model)',
+                hintText: '默认: ${provider.defaultModel}',
+                isDense: true,
+                border: const OutlineInputBorder(),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+            ),
+            const Divider(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () {
+                    _endpointControllers[provider]?.clear();
+                    _modelControllers[provider]?.clear();
+                  },
+                  child: const Text('还原默认'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.tonal(
+                  onPressed: () => _saveAdvanced(provider),
+                  child: const Text('保存高级配置'),
+                ),
+              ],
             ),
           ],
         ),

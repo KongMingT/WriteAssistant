@@ -5,14 +5,15 @@ const _secureStorage = FlutterSecureStorage();
 
 /// 支持的 AI 模型供应商
 enum AiProvider {
-  deepseek('DeepSeek', 'https://api.deepseek.com/v1/chat/completions'),
-  tongyi('通义千问', 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'),
-  openai('OpenAI', 'https://api.openai.com/v1/chat/completions'),
-  moonshot('Moonshot(月之暗面)', 'https://api.moonshot.cn/v1/chat/completions');
+  deepseek('DeepSeek', 'https://api.deepseek.com/v1/chat/completions', 'deepseek-chat'),
+  tongyi('通义千问', 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', 'qwen-plus'),
+  openai('OpenAI', 'https://api.openai.com/v1/chat/completions', 'gpt-4o-mini'),
+  moonshot('Moonshot(月之暗面)', 'https://api.moonshot.cn/v1/chat/completions', 'moonshot-v1-8k');
 
   final String displayName;
   final String defaultEndpoint;
-  const AiProvider(this.displayName, this.defaultEndpoint);
+  final String defaultModel;
+  const AiProvider(this.displayName, this.defaultEndpoint, this.defaultModel);
 }
 
 /// 单个 AI 模型配置
@@ -43,8 +44,6 @@ class AiStorageKeys {
   static const openaiKey = 'ai_openai_api_key';
   static const moonshotKey = 'ai_moonshot_api_key';
   static const activeProvider = 'ai_active_provider';
-  static const customEndpoint = 'ai_custom_endpoint';
-  static const customModel = 'ai_custom_model';
 
   static String keyFor(AiProvider provider) {
     switch (provider) {
@@ -58,6 +57,12 @@ class AiStorageKeys {
         return moonshotKey;
     }
   }
+
+  /// 自定义端点 Key（按供应商隔离，便于切换时不影响其他供应商）
+  static String endpointKeyFor(AiProvider provider) => 'ai_custom_endpoint_${provider.name}';
+
+  /// 自定义模型 Key（按供应商隔离）
+  static String modelKeyFor(AiProvider provider) => 'ai_custom_model_${provider.name}';
 }
 
 /// 获取已保存的 API Key
@@ -87,6 +92,36 @@ Future<AiProvider> getActiveProvider() async {
 /// 保存当前激活的供应商
 Future<void> setActiveProvider(AiProvider provider) async {
   await _secureStorage.write(key: AiStorageKeys.activeProvider, value: provider.name);
+}
+
+/// 获取自定义端点（无则返回 null）
+Future<String?> getCustomEndpoint(AiProvider provider) async {
+  return _secureStorage.read(key: AiStorageKeys.endpointKeyFor(provider));
+}
+
+/// 保存自定义端点
+Future<void> saveCustomEndpoint(AiProvider provider, String endpoint) async {
+  await _secureStorage.write(key: AiStorageKeys.endpointKeyFor(provider), value: endpoint);
+}
+
+/// 获取自定义模型名（无则返回 null）
+Future<String?> getCustomModel(AiProvider provider) async {
+  return _secureStorage.read(key: AiStorageKeys.modelKeyFor(provider));
+}
+
+/// 保存自定义模型名
+Future<void> saveCustomModel(AiProvider provider, String model) async {
+  await _secureStorage.write(key: AiStorageKeys.modelKeyFor(provider), value: model);
+}
+
+/// 删除自定义端点
+Future<void> deleteCustomEndpoint(AiProvider provider) async {
+  await _secureStorage.delete(key: AiStorageKeys.endpointKeyFor(provider));
+}
+
+/// 删除自定义模型名
+Future<void> deleteCustomModel(AiProvider provider) async {
+  await _secureStorage.delete(key: AiStorageKeys.modelKeyFor(provider));
 }
 
 // ===== Riverpod Provider =====

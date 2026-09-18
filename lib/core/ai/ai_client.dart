@@ -23,8 +23,8 @@ class AiClient {
     String model = '',
     bool stream = false,
   }) async {
-    final endpoint = _getEndpoint(provider);
-    final modelName = model.isEmpty ? _defaultModel(provider) : model;
+    final endpoint = await _getEndpoint(provider);
+    final modelName = await _defaultModel(provider, model);
 
     final response = await _dio.post(
       endpoint,
@@ -58,8 +58,8 @@ class AiClient {
     required List<AiMessage> messages,
     String model = '',
   }) async* {
-    final endpoint = _getEndpoint(provider);
-    final modelName = model.isEmpty ? _defaultModel(provider) : model;
+    final endpoint = await _getEndpoint(provider);
+    final modelName = await _defaultModel(provider, model);
 
     final response = await _dio.post(
       endpoint,
@@ -100,21 +100,17 @@ class AiClient {
     }
   }
 
-  String _getEndpoint(AiProvider provider) {
-    return provider.defaultEndpoint;
+  /// 解析最终端点：优先使用用户自定义的端点，否则使用供应商默认值
+  Future<String> _getEndpoint(AiProvider provider) async {
+    final custom = await getCustomEndpoint(provider);
+    return (custom == null || custom.trim().isEmpty) ? provider.defaultEndpoint : custom.trim();
   }
 
-  String _defaultModel(AiProvider provider) {
-    switch (provider) {
-      case AiProvider.deepseek:
-        return 'deepseek-chat';
-      case AiProvider.tongyi:
-        return 'qwen-plus';
-      case AiProvider.openai:
-        return 'gpt-4o-mini';
-      case AiProvider.moonshot:
-        return 'moonshot-v1-8k';
-    }
+  /// 解析最终模型名：显式传参 > 用户自定义 > 供应商默认值
+  Future<String> _defaultModel(AiProvider provider, String override) async {
+    if (override.isNotEmpty) return override;
+    final custom = await getCustomModel(provider);
+    return (custom == null || custom.trim().isEmpty) ? provider.defaultModel : custom.trim();
   }
 }
 
