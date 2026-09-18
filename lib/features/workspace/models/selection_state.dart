@@ -26,6 +26,9 @@ class WritingState {
 
 final writingStateProvider = StateProvider<WritingState>((ref) => const WritingState());
 
+/// 写作统计数据刷新信号（结束写作会话后触发，用于刷新趋势）
+final writingStatsRefreshProvider = StateProvider<int>((ref) => 0);
+
 /// 强制保存信号（触发即时保存，绕过防抖）
 final forceSaveProvider = StateProvider<int>((ref) => 0);
 

@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/database/providers.dart';
 import '../../features/workspace/models/selection_state.dart';
 import '../themes/theme_provider.dart';
+import 'writing_stats_dialog.dart';
 
-/// 底部状态栏 - 显示字数、码字速度等
+/// 底部状态栏 - 显示字数、码字速度、今日累计等
 class StatusBar extends ConsumerWidget {
   const StatusBar({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(writingStateProvider);
+    final todayCount = ref.watch(todayWordCountProvider).valueOrNull ?? 0;
     final theme = Theme.of(context);
     return Container(
       height: 32,
@@ -28,6 +31,15 @@ class StatusBar extends ConsumerWidget {
             const SizedBox(width: 24),
             _StatusItem(icon: Icons.timer_outlined, label: '本次写作', value: state.sessionDuration),
           ],
+          const SizedBox(width: 24),
+          // 今日累计（点击打开统计趋势）
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () => showWritingStatsDialog(context),
+              child: _StatusItem(icon: Icons.today_outlined, label: '今日', value: '$todayCount'),
+            ),
+          ),
           const Spacer(),
           _buildContextStatus(ref, theme),
           IconButton(
@@ -52,6 +64,15 @@ class StatusBar extends ConsumerWidget {
     );
   }
 }
+
+/// 今日累计写作字数（随 writingStatsRefreshProvider 刷新）
+final todayWordCountProvider = FutureProvider<int>((ref) async {
+  ref.watch(writingStatsRefreshProvider);
+  final sessionDao = ref.read(sessionDaoProvider);
+  final now = DateTime.now();
+  final todayStart = DateTime(now.year, now.month, now.day);
+  return sessionDao.getWordCountSince(todayStart);
+});
 
 class _StatusItem extends StatelessWidget {
   const _StatusItem({

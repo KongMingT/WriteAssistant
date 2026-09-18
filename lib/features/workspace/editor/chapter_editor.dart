@@ -1,10 +1,13 @@
 import 'dart:async';
 
+import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/database/database.dart';
 import '../../../core/database/providers.dart';
+import '../../../core/utils/id_generator.dart';
 import '../../../shared/themes/theme_provider.dart';
 import '../../../shared/widgets/undo_stack.dart';
 import '../../outline/outline_panel.dart';
@@ -33,6 +36,8 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
   bool _isLoading = false;
   bool _showOutline = true;
   DateTime? _sessionStart;
+  int _sessionStartWordCount = 0;
+  String? _activeSessionId;
   Timer? _statusTimer;
   final _undoStack = UndoStack();
   Timer? _undoTimer;
@@ -60,6 +65,7 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
   @override
   void dispose() {
     _saveImmediately();
+    _endSession();
     _contentController.dispose();
     _titleController.dispose();
     _statusTimer?.cancel();
@@ -485,18 +491,59 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
 
   Future<void> _loadChapter(String chapterId) async {
     await _saveImmediately();
+    _endSession();
     setState(() => _isLoading = true);
     final chapterDao = ref.read(chapterDaoProvider);
-    final chapter = await chapterDao.getChapterById(chapterId);
-    if (chapter != null && mounted) {
-      _contentController.text = chapter.content;
-      _titleController.text = chapter.title;
-      _undoStack.clear();
-      _undoStack.push(_contentController.value);
-      setState(() { _currentChapterId = chapterId; _isLoading = false; });
-      _sessionStart = DateTime.now();
-      _updateStatusBar();
+    try {
+      final chapter = await chapterDao.getChapterById(chapterId);
+      if (chapter != null && mounted) {
+        _contentController.text = chapter.content;
+        _titleController.text = chapter.title;
+        _undoStack.clear();
+        _undoStack.push(_contentController.value);
+        setState(() {
+          _currentChapterId = chapterId;
+          _isLoading = false;
+        });
+        _startSession();
+        _updateStatusBar();
+      }
+    } catch (e) {
+      // 章节加载失败时静默结束会话
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  // ===== 写作会话（写入 writing_sessions） =====
+
+  void _startSession() {
+    final bookId = ref.read(selectedBookProvider);
+    if (bookId == null || _currentChapterId == null) return;
+    final id = generateId();
+    final sessionDao = ref.read(sessionDaoProvider);
+    sessionDao.startSession(WritingSessionsCompanion(
+      id: Value(id),
+      bookId: Value(bookId),
+      chapterId: Value(_currentChapterId),
+      startTime: Value(DateTime.now()),
+    ));
+    _sessionStart = DateTime.now();
+    _sessionStartWordCount = _contentController.text.length;
+    _activeSessionId = id;
+  }
+
+  void _endSession() {
+    final id = _activeSessionId;
+    final startTime = _sessionStart;
+    final startWords = _sessionStartWordCount;
+    if (id == null || startTime == null) return;
+    final now = DateTime.now();
+    if (now.difference(startTime).inSeconds < 5) return;
+    final written = (_contentController.text.length - startWords).clamp(0, 1 << 31);
+    final sessionDao = ref.read(sessionDaoProvider);
+    sessionDao.endSession(id, written);
+    _activeSessionId = null;
+    ref.read(writingStatsRefreshProvider.notifier).state++;
   }
 
   // ===== 标题保存 =====

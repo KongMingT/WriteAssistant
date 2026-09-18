@@ -76,5 +76,55 @@ void main() {
       expect(sessions.first.endTime, isNotNull);
       expect(sessions.first.wordCount, 500);
     });
+
+    test('getWordCountSince sums ended sessions after a time point', () async {
+      final now = DateTime.now();
+      final oldId = generateId();
+      final newId = generateId();
+      await dao.startSession(WritingSessionsCompanion(
+        id: Value(oldId),
+        bookId: Value(_bookId),
+        startTime: Value(now.subtract(const Duration(hours: 3))),
+      ));
+      await dao.startSession(WritingSessionsCompanion(
+        id: Value(newId),
+        bookId: Value(_bookId),
+        startTime: Value(now),
+      ));
+      // 分别结束：旧记录3小时前结束、新记录刚刚结束
+      await dao.endSession(oldId, 100, endTime: now.subtract(const Duration(hours: 3)));
+      await dao.endSession(newId, 200);
+
+      final since = now.subtract(const Duration(hours: 2));
+      final total = await dao.getWordCountSince(since);
+      expect(total, 200);
+    });
+
+    test('getDailyWordCounts returns entries for each day', () async {
+      final id = generateId();
+      await dao.startSession(WritingSessionsCompanion(
+        id: Value(id),
+        bookId: Value(_bookId),
+        startTime: Value(DateTime.now()),
+      ));
+      await dao.endSession(id, 300);
+
+      final daily = await dao.getDailyWordCounts(7);
+      expect(daily.length, 7);
+      final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+      final todayEntry = daily.firstWhere((d) => d.day == today);
+      expect(todayEntry.words, 300);
+    });
+
+    test('deleteSessionsByBook removes book sessions', () async {
+      await dao.startSession(WritingSessionsCompanion(
+        id: Value(generateId()),
+        bookId: Value(_bookId),
+        startTime: Value(DateTime.now()),
+      ));
+      await dao.deleteSessionsByBook(_bookId);
+      final sessions = await dao.getSessionsByBook(_bookId);
+      expect(sessions, isEmpty);
+    });
   });
 }
