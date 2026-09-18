@@ -30,6 +30,9 @@ class ChapterEditor extends ConsumerStatefulWidget {
 }
 
 class _ChapterEditorState extends ConsumerState<ChapterEditor> {
+  /// 超过该字数的章节被认定为"大章节"，加载时提示拆分
+  static const int _largeChapterThreshold = 200000;
+
   final TextEditingController _contentController = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
   String? _currentChapterId;
@@ -507,6 +510,16 @@ class _ChapterEditorState extends ConsumerState<ChapterEditor> {
         });
         _startSession();
         _updateStatusBar();
+        if (chapter.content.length > _largeChapterThreshold) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(
+                content: Text('⚠️ 本章共 ${chapter.content.length} 字，章节偏大可能导致编辑器卡顿，建议拆分为多个章节'),
+                duration: const Duration(seconds: 4),
+              ),
+            );
+        }
       }
     } catch (e) {
       // 章节加载失败时静默结束会话

@@ -68,6 +68,90 @@ void main() {
       expect(books, isEmpty);
     });
 
+    test('delete book cascades volumes/chapters/outline/characters/sessions', () async {
+      final bookId = generateId();
+      await dao.insertBook(BooksCompanion(
+        id: Value(bookId),
+        title: Value('Cascade'),
+        createdAt: Value(DateTime.now()),
+        updatedAt: Value(DateTime.now()),
+      ));
+
+      final volumeId = generateId();
+      await db.into(db.volumes).insert(VolumesCompanion(
+        id: Value(volumeId),
+        bookId: Value(bookId),
+        title: Value('V1'),
+        sortOrder: Value(1),
+        createdAt: Value(DateTime.now()),
+      ));
+
+      final chapterId = generateId();
+      await db.into(db.chapters).insert(ChaptersCompanion(
+        id: Value(chapterId),
+        volumeId: Value(volumeId),
+        title: Value('Ch1'),
+        content: Value('abcdefg'),
+        wordCount: Value(7),
+        sortOrder: Value(1),
+        createdAt: Value(DateTime.now()),
+        updatedAt: Value(DateTime.now()),
+      ));
+
+      // 书籍级 + 章级大纲节点
+      await db.into(db.outlineNodes).insert(OutlineNodesCompanion(
+        id: Value(generateId()),
+        bookId: Value(bookId),
+        chapterId: const Value(''),
+        title: const Value('book outline'),
+        sortOrder: const Value(1),
+        type: const Value('book_root'),
+      ));
+      await db.into(db.outlineNodes).insert(OutlineNodesCompanion(
+        id: Value(generateId()),
+        bookId: Value(bookId),
+        chapterId: Value(chapterId),
+        title: const Value('chapter outline'),
+        sortOrder: const Value(1),
+        type: const Value('chapter_summary'),
+      ));
+
+      // 角色 + 关系
+      final characterId = generateId();
+      await db.into(db.characters).insert(CharactersCompanion(
+        id: Value(characterId),
+        bookId: Value(bookId),
+        name: const Value('Hero'),
+        createdAt: Value(DateTime.now()),
+        updatedAt: Value(DateTime.now()),
+      ));
+      await db.into(db.characterRelations).insert(CharacterRelationsCompanion(
+        id: Value(generateId()),
+        bookId: Value(bookId),
+        characterAId: Value(characterId),
+        characterBId: Value(characterId),
+        relationType: const Value('self'),
+      ));
+
+      // 写作记录
+      await db.into(db.writingSessions).insert(WritingSessionsCompanion(
+        id: Value(generateId()),
+        bookId: Value(bookId),
+        chapterId: Value(chapterId),
+        startTime: Value(DateTime.now()),
+      ));
+
+      await dao.deleteBook(bookId);
+
+      expect(await dao.getAllBooks(), isEmpty);
+      expect(await db.select(db.volumes).get(), isEmpty);
+      expect(await db.select(db.chapters).get(), isEmpty);
+      expect(await db.select(db.outlineNodes).get(), isEmpty);
+      expect(await db.select(db.characters).get(), isEmpty);
+      expect(await db.select(db.characterRelations).get(), isEmpty);
+      expect(await db.select(db.writingSessions).get(), isEmpty);
+    });
+
     test('recalculate word count from chapters', () async {
       final bookId = generateId();
       await dao.insertBook(BooksCompanion(

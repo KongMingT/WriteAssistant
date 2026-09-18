@@ -178,10 +178,12 @@ class _BookAnalysisScreenState extends ConsumerState<BookAnalysisScreen> {
     ));
     final chapters = _txtService.splitChapters(_importedContent!);
     for (int i = 0; i < chapters.length; i++) {
+      final ch = chapters[i];
+      final title = ch.title.isNotEmpty ? ch.title : '第${i + 1}章';
       await chapterDao.insertChapter(ChaptersCompanion(
         id: Value(generateId()), volumeId: Value(volId),
-        title: Value('第${i + 1}章'), content: Value(chapters[i]),
-        wordCount: Value(chapters[i].length),
+        title: Value(title), content: Value(ch.content),
+        wordCount: Value(ch.content.length),
         sortOrder: Value(i), createdAt: Value(now), updatedAt: Value(now),
       ));
     }
