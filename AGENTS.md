@@ -207,10 +207,12 @@ lib/
 
 ### ⚠️ 剩余已知问题
 1. **无 UI 的死数据表** — `plot_lines`/`plot_nodes`（剧情线）、`character_relations`（角色关系）已建表但无 UI/调用方
-2. **AI 大纲导入依赖根节点** — `_tryImportOutline` 要求 `book_root` 已存在（需先打开过一次大纲页），否则静默失败
-3. **死代码/未用模板** — `AiPrompts.writerBlock`/`expandOutline`/`generateChapterOutline` 未被调用（快捷操作用内联文本）
-4. **`getOutlineByBook` 未过滤 `chapterId=''`** — 会把 `chapter_summary`（章节摘要，设置了 bookId）与书籍级大纲节点混在一起返回
-5. 🔮 **远期** — 多语言 / 日志 / 自动更新 / 云同步 / AI 对话 token 上限自定义 / 章节批量处理
+2. **死代码/未用模板** — `AiPrompts.writerBlock`/`expandOutline`/`generateChapterOutline` 未被调用（快捷操作用内联文本）
+3. 🔮 **远期** — 多语言 / 日志 / 自动更新 / 云同步 / AI 对话 token 上限自定义 / 章节批量处理
+
+### ✅ 已修复（代码实现与文档不一致处）
+- **AI 大纲导入自动创建根节点** — `ai_panel.dart:596-611` 已实现首次导入时自动创建 `book_root`，不再静默失败
+- **`getOutlineByBook` 正确过滤 `chapterId=''`** — `outline_dao.dart:26` 已有 `n.chapterId.equals('')` 过滤，并新增测试验证 `chapter_summary` 类型节点被正确排除
 
 ---
 
@@ -266,7 +268,7 @@ lib/
 4. **`_selectLatestChapter`** 按 sortOrder 取全书最大章节，进入工作区自动定位
 5. **字符/字数统计基于 `content.length`**（含标点换行），非中文分词统计
 6. **`_saveImmediately` 无变化则跳过**写库/快照/会话结算；但 `recalculateBookWordCount` 仍在相关入口调用
-7. **测试**：9 个 DAO + 3 个 Service + widget 共 70 个用例全部通过；测试用 `AppDatabase(executor: NativeDatabase.memory())` 在内存库中运行
+7. **测试**：9 个 DAO + 3 个 Service + widget 共 71 个用例全部通过；测试用 `AppDatabase(executor: NativeDatabase.memory())` 在内存库中运行
 8. **EPSILON 注意**：dart fix 已批量把 243 处 const/final 修复；改动应保持 lint 干净（analyze 目标 0 error / 0 warning）
 
 ---
@@ -300,7 +302,7 @@ flutter test
 
 **前置条件**: Flutter 3.27+, Dart 3.6+, Visual Studio 2022 (含 C++ 桌面工作负载), Windows 10/11 64-bit
 
-**当前状态**: `flutter analyze` 无 error / 无 warning（仅 tools/ 脚本 2 条 avoid_print info 可忽略）；`flutter test` 70 用例全绿。
+**当前状态**: `flutter analyze` 无 error / 无 warning（仅 tools/ 脚本 2 条 avoid_print info 可忽略）；`flutter test` 71 用例全绿。
 
 ---
 
@@ -309,3 +311,188 @@ flutter test
 - 每完成一个功能批次：`flutter analyze` + `flutter test` 验证通过后提交并推送
 - 提交信息风格：`feat:/fix:/chore: 中文描述 (+ 可选的要点列表)`
 - 历史批次提交：A 技术债清理(519f5ba) / B 自定义端点(1f31850) / C 沉浸模式(1f31850→08c580a 前 b1f? 见 `git log`) / D 拖拽(1f31850, 08c580a) / E 写作统计(1b67b21) / F 导出(39a0453) / G 导入+级联+性能(294b7b8) / H1+H2 AI持久化+快照(0278c08) / H3+H4 悬浮提示+每日目标(1ca3f5e) / I lint( b571532)
+
+---
+
+## 🎯 开发规划：用户视角的竞品差距与功能增强
+
+> 基于「网文作者/写作爱好者」视角，对比 **笔神/作家助手/起点后台/Notion/Obsidian/Scrivener/秘塔写作猫/Notion AI** 等主流工具，梳理核心差距与优先级。
+
+---
+
+### P0 - 核心刚需（直接影响「能不能用」和「留存」）
+
+| # | 功能 | 竞品参考 | 现状差距 | 实现建议 |
+|---|------|----------|----------|----------|
+| 1 | **云同步/多端** | 石墨/Notion/作家助手/起点后台 | 仅本地 SQLite，换设备/重装即丢失 | Firebase / Supabase / 自建 WebDAV + 加密同步；冲突合并策略（最后写入胜/手动合并） |
+| 2 | **一键投稿/发布** | 起点作家助手/晋江后台/飞卢/笔神 | 无平台对接，导出后需手动复制粘贴 | 实现主流平台 API（起点/晋江/飞卢/塔读/红袖/纵横/书旗/掌阅），章节批量推送、定时发布、状态同步 |
+| 3 | **大纲可视化** | Scrivener Corkboard / Obsidian Canvas / XMind / 幕布 | 仅树形列表，无概览、无拖拽调整结构 | 增加「画布模式」：卡片式卷/章/节拖拽、连线、颜色标记、缩放/平移；支持思维导图/时间轴切换 |
+| 4 | **素材库/设定集** | Notion 数据库 / Scrivener Research / 世界观笔记 | 仅角色表，无势力/地图/物品/法术/种族/年表 | 新增 `world_entities` 表（type: faction/location/item/race/magic/term/timeline），支持模板、标签、关联图谱 |
+| 5 | **AI 深度写作辅助** | 秘塔写作猫 / Notion AI / 通义千问写作 / 笔神 AI | 仅对话+生成大纲，**无续写/润色/扩写/降重/查重/命名/灵感** | 接入流式续写（光标位置补全）、段落润色（风格迁移）、扩写/压缩、敏感词/违规检测、自动起名、灵感卡片 |
+
+---
+
+### P1 - 体验增强（显著提升「好不好用」和「日活」）
+
+| # | 功能 | 竞品参考 | 现状差距 | 实现建议 |
+|---|------|----------|----------|----------|
+| 6 | **专注/沉浸模式深度** | iA Writer / Ulysses / 专注薄 / Forest | 仅隐藏侧栏，**无打字音效/背景图/白噪音/打字机模式/逐行高亮/夜间护眼** | 增加：打字音效（机械键盘/铅笔/墨水）、自定义背景图/视频、白噪音（雨声/火炉/咖啡厅）、打字机模式（当前行居中）、逐行/逐句高亮、番茄钟内置 |
+| 7 | **写作目标与习惯系统** | 番茄ToDo / Forest / 习惯工厂 / NaNoWriMo | 仅每日目标，**无连续签到/周目标/奖励机制/写作热力图/连续天数/勋章** | GitHub Contributions 风格热力图、连续写作天数、里程碑勋章（1万/10万/100万字）、周/月目标、导出年度报告 |
+| 8 | **高级统计分析** | Scrivener 统计 / 笔神数据 / 起点后台数据 | 基础字数/速度，**无词频/高频词/节奏曲线/对话占比/场景分布/人物出场统计** | 文本分析：中文分词、词频云、对话/描写/心理比例、章节节奏图、角色出场时间线、敏感词高亮 |
+| 9 | **版本控制与对比** | Git / Google Docs 历史 / Notion 页面历史 | 快照仅列表，**无 Diff 对比/分支/命名版本/回滚到任意点/协作合并** | 引入 diff-match-patch，支持：两版本并排 Diff、语义化版本标签、分支实验性写作、一键回滚 |
+| 10 | **导出格式完善** | Scrivener / 笔神 / 起点后台 | 仅 TXT/MD/EPUB，**无 PDF/Docx/起点专用格式/印刷版排版/多版本导出** | 增加：PDF（自定义页眉页脚/目录/封面）、Docx（保留格式）、平台专用格式、批量导出分卷、印刷排版预览 |
+
+---
+
+### P2 - 差异化/护城河（形成「离不开」的粘性）
+
+| # | 功能 | 竞品参考 | 现状差距 | 实现建议 |
+|---|------|----------|----------|----------|
+| 11 | **协作与反馈** | 石墨/飞书/Notion/Google Docs | 单机单人，**无编辑/责编/读者协作/评论/建议模式/共享链接** | 邀请编辑/责编留痕评论、生成只读分享链接（含密码/过期时间）、读者弹幕式反馈导入 |
+| 12 | **时间轴/年表/因果链** | Aeon Timeline / Scrivener / 奥比岛年表 | 无时间维度管理，**无法查事件先后/人物年龄/因果一致性** | 基于 `outline_nodes` + 新增 `timeline_events`，可视化时间轴、自动校验年龄/事件矛盾、导出年表 |
+| 13 | **灵感捕捉/素材箱** | Obsidian Quick Capture / Flomo / 为知笔记 | 无碎片化记录入口，**灵感来不及记、素材散落微信/备忘录** | 全局快捷键/悬浮球快速记录、语音转文字、OCR 图片识别、网页剪藏、标签自动归类 |
+| 14 | **智能命名/生成器** | 秘塔起名 / 笔神命名 / 奇妙起名 | 仅 AI 对话起名，**无专用生成器/批量生成/风格筛选/收藏/一键替换** | 独立命名面板：人名/地名/功法/丹药/势力/秘境/装备，按风格/字数/寓意筛选、批量导入替换 |
+| 15 | **数据安全与备份** | 1Password / Bitwarden / 自动备份 | 仅本地 DB，**无自动备份/加密导出/防误删/设备指纹绑定** | 定时增量备份（可配置目录/云盘）、AES-256 加密导出、删除保护（回收站 30 天）、设备指纹绑定解锁 |
+
+---
+
+### P3 - 生态扩展（长期护城河）
+
+| # | 功能 | 说明 |
+|---|------|------|
+| 16 | **插件/脚本系统** | Lua/JS 插件：自定义导出模板、自动化工作流、第三方 AI 接入、平台发布适配器 |
+| 17 | **社区/模板市场** | 大纲模板/世界观模板/角色卡模板/提示词模板 分享与订阅 |
+| 18 | **多语言** | 英文/日文/繁体界面，面向海外华语作者 |
+| 19 | **移动端** | Flutter 原生优势，适配 Android/iOS（触屏优化、手写笔支持、离线同步） |
+| 20 | **Web 版** | 浏览器轻量编辑、协作、分享链接打开即用 |
+
+---
+
+### 📋 近期迭代建议（按 ROI 排序）
+
+| 迭代 | 主题 | 核心交付 | 预估工作量 |
+|------|------|----------|------------|
+| J | **云同步 MVP** | WebDAV/自建同步 + 冲突合并 + 设备管理 | 3-4 周 |
+| K | **一键投稿（起点/晋江/飞卢）** | 3 家平台 API 对接 + 章节队列 + 状态同步 | 2-3 周 |
+| L | **大纲画布模式** | 卡片拖拽/连线/缩放/切换树形 | 2-3 周 |
+| M | **AI 续写/润色/扩写** | 光标补全 + 段落重写 + 风格迁移 + 敏感词检测 | 3-4 周 |
+| N | **素材库/设定集** | 实体类型/模板/标签/关联图谱/搜索 | 2-3 周 |
+| O | **专注模式深度** | 音效/背景/白噪音/打字机/番茄钟 | 1-2 周 |
+| P | **写作热力图/习惯/勋章** | GitHub 风格热力图 + 连续天数 + 里程碑 | 1-2 周 |
+| Q | **版本 Diff/分支** | 并排对比 + 语义版本 + 实验分支 | 2-3 周 |
+| R | **PDF/Docx/平台格式导出** | 排版引擎 + 模板 + 批量导出 | 2-3 周 |
+| S | **时间轴/年表/因果校验** | 可视化时间轴 + 自动矛盾检测 | 2-3 周 |
+
+---
+
+### 🛠 技术债与架构预演（配合上述功能）
+
+| 领域 | 现状 | 目标 |
+|------|------|------|
+| **数据层** | drift + 本地 SQLite | 抽象 `StorageBackend` 接口，支持 Local / WebDAV / Supabase / Firebase 热插拔 |
+| **同步层** | 无 | CRDT / Operational Transform / 简易 LWW + 向量时钟冲突解决 |
+| **AI 层** | 单一 `AiClient` | 策略模式：`AiProvider` 插件化，支持本地模型、多模型路由、Prompt 模板市场 |
+| **导出层** | 硬编码 TXT/MD/EPUB | 模板引擎 + 渲染器插件，支持用户自定义导出模板 |
+| **UI 架构** | 单体 ConsumerWidget | 模块化 Feature + 共享 Kernel，支持懒加载、插件热更 |
+| **测试** | 71 单元测试 | + 集成测试（同步/发布/AI流）、黄金文件测试（导出/渲染）、性能基准 |
+
+---
+
+### 📌 决策原则
+
+1. **数据主权优先**：本地优先、端到端加密、用户可导出完整数据
+2. **渐进增强**：核心写作流不可破坏，新功能默认关闭/可选
+3. **隐私合规**：无埋点上传内容、API Key 仅本地加密存储、遵守平台 API 条款
+4. **性能红线**：单章 >200k 字符警告、大纲 >5k 节点虚拟化、启动 <2s、内存 <300MB
+5. **开源友好**：核心逻辑 MIT，云同步/发布插件可闭源商业化
+
+---
+
+## 📱 Android 端适配规划
+
+> Flutter 原生支持 Android，但当前代码以 Windows 桌面为主，需针对性适配移动端交互与能力差异。
+
+### ✅ 已就绪（无需改动）
+- **依赖兼容**：所有依赖（drift/sqlite3_flutter_libs/path_provider/file_picker/flutter_secure_storage/dio/archive/uuid/intl）均支持 Android
+- **数据库路径**：`getApplicationDocumentsDirectory()` 跨平台通用，SQLite 文件直用
+- **AI 网络请求**：Dio + SSE 流式在 Android 同桌面表现一致
+- **资源文件**：字体/图标/主题通过 `flutter:` assets 配置即可复用
+
+### ⚠️ 需适配项（按优先级）
+
+| # | 模块 | 问题 | 方案 | 工作量 |
+|---|------|------|------|--------|
+| 1 | **键盘快捷键** | `HardwareKeyboard`/`KeyEvent` 仅桌面/网页有效；移动端无 Ctrl+S/F/E/N/M | AppBar/底部工具栏补充对应图标按钮（保存/搜索/导出/新建章节/沉浸模式）；设置页可配置手势触发 | 低 |
+| 2 | **右键菜单/悬浮** | `onSecondaryTapDown`/`MouseRegion` 移动端无效 | 长按替代右键；悬浮提示改为点击展开/底部Sheet；`chapter_tree.dart`/`outline_screen.dart` 需改造 | 中 |
+| 3 | **文件选择/导出目录** | `FilePicker.getDirectoryPath()` Android 受限（Scoped Storage） | 改用 `FilePicker.pickFiles()` 选单文件；整书导出改为「保存到下载目录」或分享面板 (`share_plus`) | 中 |
+| 4 | **拖拽排序** | `Draggable`/`DragTarget` 桌面鼠标友好，触屏体验差 | 章节/卷排序改为「编辑模式」+ 上下箭头按钮/长按拖拽手柄（`reorderable_list`） | 中 |
+| 5 | **三栏布局** | 手机屏幕宽度不足承载 目录+编辑器+AI 面板 | **响应式断点**：<600dp 单栏（底部Tab切换）、600-900dp 双栏（目录/编辑器+AI抽屉）、>900dp 三栏；`LayoutBuilder` + `NavigationRail`/`BottomNavigationBar` | 高 |
+| 6 | **沉浸模式** | 全屏隐藏状态栏/导航栏需 Android 原生 API | `SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky)`；配合手势退出 | 低 |
+| 7 | **编辑器工具栏** | 当前横向工具栏在窄屏溢出 | 折叠菜单/分组/底部浮动工具栏；字体/字号/缩进改为弹窗选择器 | 中 |
+| 8 | **虚拟键盘遮挡** | `windowSoftInputMode=adjustResize` 已配置，但需测试底部状态栏/输入框不被遮挡 | 编辑器底部 padding 动态适配 `MediaQuery.viewInsets.bottom` | 低 |
+| 9 | **大章节性能** | 单章 >200k 字符在移动端内存/渲染更敏感 | 虚拟化渲染（`ExtendedTextField`/`flutter_quill`）、分页加载、建议拆分阈值降低到 100k | 中 |
+| 10 | **权限声明** | 读写文件/网络/存储需在 `AndroidManifest.xml` 声明 | `READ_EXTERNAL_STORAGE`/`WRITE_EXTERNAL_STORAGE` (API<29) / `INTERNET` / `ACCESS_NETWORK_STATE` | 低 |
+
+### 🛠 配置清单
+
+```yaml
+# pubspec.yaml 新增
+dependencies:
+  share_plus: ^10.0.0          # Android 分享面板（导出文件）
+  permission_handler: ^11.0.0  # 运行时权限申请
+  flutter_quill: ^10.0.0       # 可选：替代原生 TextField，更好移动端富文本支持
+```
+
+```xml
+<!-- android/app/src/main/AndroidManifest.xml 新增权限 -->
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+<!-- Android 10+ 使用 MediaStore / Scoped Storage，无需 WRITE_EXTERNAL_STORAGE -->
+<application android:requestLegacyExternalStorage="true" ...>
+```
+
+```gradle
+<!-- android/app/build.gradle 关键配置 -->
+android {
+    defaultConfig {
+        minSdk 23          // Flutter 3.27 要求 minSdk >= 23
+        targetSdk 34
+        // 启用 Jetifier 兼容旧插件
+    }
+    // 签名配置（发布必需）
+    signingConfigs {
+        release {
+            storeFile file("../keystore.jks")
+            storePassword "..."
+            keyAlias "writer_assistant"
+            keyPassword "..."
+        }
+    }
+}
+```
+
+### 📦 构建产物对比
+
+| 平台 | 命令 | 产物 | 备注 |
+|------|------|------|------|
+| Windows | `flutter build windows --release` | `.exe` + DLL | 需 VS2022 |
+| **Android** | `flutter build apk --release` | `build/app/outputs/flutter-apk/app-release.apk` | 可直接安装/分发 |
+| Android | `flutter build appbundle --release` | `build/app/outputs/bundle/release/app-release.aab` | Play Console 上传必需 |
+
+### 🔄 迭代建议
+
+| 阶段 | 目标 | 关键交付 |
+|------|------|----------|
+| A1 | **最小可用** | 编译通过、数据库读写、AI 对话、基础编辑、单栏导航、APK 打包 |
+| A2 | **体验对齐** | 响应式布局、工具栏适配、文件导入导出(分享面板)、长按菜单、虚拟键盘适配 |
+| A3 | **原生感** | 启动图/闪屏、推送通知(写作提醒)、桌面快捷方式、生物识别锁应用、横屏/平板优化 |
+| A4 | **发布就绪** | Play Console 上架、应用内更新、崩溃上报、混淆/加固、隐私政策合规 |
+
+### 📌 适配原则
+
+1. **单代码库、多端响应式** —— `LayoutBuilder`/`MediaQuery` 断点复用，不分仓
+2. **桌面优先不倒退** —— 移动端适配不破坏现有桌面体验
+3. **能力降级优雅** —— 移动端无法实现的功能（如多窗口拖拽）提供替代方案而非隐藏
+4. **性能兜底** —— 低端机型内存/CPU 限制下大章节/大纲仍可流畅编辑

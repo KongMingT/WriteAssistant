@@ -296,5 +296,55 @@ void main() {
       final otherNodes = await dao.getOutlineByBook(otherBook);
       expect(otherNodes.length, 1);
     });
+
+    test('getOutlineByBook filters out chapter-level nodes (chapterId not empty)', () async {
+      // Insert book-level nodes (chapterId = '')
+      await dao.insertOutlineNode(OutlineNodesCompanion(
+        id: Value(generateId()),
+        bookId: const Value(_bookId),
+        chapterId: const Value(''),
+        title: const Value('书籍大纲根节点'),
+        sortOrder: const Value(0),
+        type: const Value('book_root'),
+      ));
+      await dao.insertOutlineNode(OutlineNodesCompanion(
+        id: Value(generateId()),
+        bookId: const Value(_bookId),
+        chapterId: const Value(''),
+        title: const Value('第一卷'),
+        sortOrder: const Value(1),
+        type: const Value('volume'),
+      ));
+
+      // Insert chapter-level nodes (chapterId = actual chapter ID)
+      await dao.insertOutlineNode(OutlineNodesCompanion(
+        id: Value(generateId()),
+        bookId: const Value(_bookId),
+        chapterId: const Value(_chapterId),
+        title: const Value('章节摘要-第一章'),
+        sortOrder: const Value(0),
+        type: const Value('chapter_summary'),
+        status: const Value('final'),
+      ));
+      await dao.insertOutlineNode(OutlineNodesCompanion(
+        id: Value(generateId()),
+        bookId: const Value(_bookId),
+        chapterId: const Value(_chapterId),
+        title: const Value('章纲节点'),
+        sortOrder: const Value(1),
+        type: const Value('section'),
+      ));
+
+      // getOutlineByBook should only return book-level nodes (chapterId = '')
+      final bookNodes = await dao.getOutlineByBook(_bookId);
+      expect(bookNodes.length, 2);
+      expect(bookNodes.every((n) => n.chapterId.isEmpty), isTrue);
+      expect(bookNodes.map((n) => n.title).toSet(), {'书籍大纲根节点', '第一卷'});
+
+      // Chapter-level nodes should be retrievable via getOutlineNodesByChapter
+      final chapterNodes = await dao.getOutlineNodesByChapter(_chapterId);
+      expect(chapterNodes.length, 2);
+      expect(chapterNodes.every((n) => n.chapterId == _chapterId), isTrue);
+    });
   });
 }
