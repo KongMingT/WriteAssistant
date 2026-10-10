@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' hide Column;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/ai/ai_client.dart';
 import '../../../core/ai/models/ai_model_config.dart';
@@ -26,6 +28,46 @@ class AiPanel extends ConsumerStatefulWidget {
   ConsumerState<AiPanel> createState() => _AiPanelState();
 }
 
+// ===== Top-level Helper Classes =====
+
+class _ChapterWithOutline {
+  final Chapter chapter;
+  final String volumeTitle;
+  final String outlineText;
+
+  _ChapterWithOutline({
+    required this.chapter,
+    required this.volumeTitle,
+    required this.outlineText,
+  });
+}
+
+class _ExpandOutlineData {
+  final Chapter chapter;
+  final String outlineText;
+
+  _ExpandOutlineData({
+    required this.chapter,
+    required this.outlineText,
+  });
+}
+
+class _NamingParams {
+  final String surname;
+  final bool isDoubleSurname;
+  final String gender;
+  final String style;
+  final int count;
+
+  _NamingParams({
+    required this.surname,
+    required this.isDoubleSurname,
+    required this.gender,
+    required this.style,
+    required this.count,
+  });
+}
+
 class _AiPanelState extends ConsumerState<AiPanel> {
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -34,6 +76,40 @@ class _AiPanelState extends ConsumerState<AiPanel> {
   List<Volume> _volumes = [];
   List<Chapter> _allChapters = [];
   bool _selectorLoading = false;
+
+  // Naming preferences (persisted)
+  String _namingSurname = '';
+  bool _namingIsDoubleSurname = false;
+  String _namingGender = 'male';
+  String _namingStyle = 'xuanhuan';
+  int _namingCount = 15;
+  List<String> _namingResults = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNamingPrefs();
+  }
+
+  Future<void> _loadNamingPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _namingSurname = prefs.getString('naming_surname') ?? '';
+      _namingIsDoubleSurname = prefs.getBool('naming_double_surname') ?? false;
+      _namingGender = prefs.getString('naming_gender') ?? 'male';
+      _namingStyle = prefs.getString('naming_style') ?? 'xuanhuan';
+      _namingCount = prefs.getInt('naming_count') ?? 15;
+    });
+  }
+
+  Future<void> _saveNamingPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('naming_surname', _namingSurname);
+    await prefs.setBool('naming_double_surname', _namingIsDoubleSurname);
+    await prefs.setString('naming_gender', _namingGender);
+    await prefs.setString('naming_style', _namingStyle);
+    await prefs.setInt('naming_count', _namingCount);
+  }
 
   @override
   void dispose() {
@@ -236,27 +312,13 @@ class _AiPanelState extends ConsumerState<AiPanel> {
         await _handleBookPlanning();
         break;
       case 'expand':
-        await _sendMessage([
-          '请根据以下细纲扩写成一篇完整的网文章节（约3000-4000字）。',
-          '直接输出正文，不要加额外说明。',
-          '',
-          '细纲（请在下面填写你的细纲内容）：',
-        ].join('\n\n'));
+        await _showExpandOutlineDialog();
         break;
       case 'naming':
-        await _sendMessage(AiPrompts.naming('小说角色', style: '古风玄幻', count: 15));
+        await _showNamingPanel();
         break;
       case 'writerBlock':
-        await _sendMessage([
-          '作者在写小说时卡住了，需要你的帮助。',
-          '',
-          '请给出 3-5 个不同的发展方向建议，每个建议包括：',
-          '1. 发展方向简述',
-          '2. 具体的剧情走向',
-          '3. 这个方向能带来的爽点/看点',
-          '',
-          '要求：不要太过跳脱，要符合当前故事逻辑。',
-        ].join('\n'));
+        await _handleWriterBlock();
         break;
       // ===== 大纲系统快捷操作 =====
       case 'generateOutline':
@@ -305,6 +367,307 @@ class _AiPanelState extends ConsumerState<AiPanel> {
         const SnackBar(content: Text('请先在大纲页面中选择一个节点'), duration: Duration(seconds: 2)),
       );
     }
+  }
+
+  // ===== 细纲扩写 =====
+  Future<void> _showExpandOutlineDialog() async {
+    final bookId = ref.read(selectedBookProvider);
+    if (bookId == null) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请先选择书籍')));
+      return;
+    }
+
+    final chapterDao = ref.read(chapterDaoProvider);
+    final outlineDao = ref.read(outlineDaoProvider);
+    final volumeDao = ref.read(volumeDaoProvider);
+
+    final volumes = await volumeDao.getVolumesByBook(bookId);
+    final chaptersWithOutline = <_ChapterWithOutline>[];
+
+    for (final vol in volumes) {
+      final chapters = await chapterDao.getChaptersByVolume(vol.id);
+      for (final ch in chapters) {
+        final outlineNodes = await outlineDao.getOutlineNodesByChapter(ch.id);
+        final outlineText = outlineNodes
+            .where((n) => n.content != null && n.content!.isNotEmpty)
+            .map((n) => '${n.title}：${n.content}')
+            .join('\n\n');
+        chaptersWithOutline.add(_ChapterWithOutline(
+          chapter: ch,
+          volumeTitle: vol.title,
+          outlineText: outlineText,
+        ));
+      }
+    }
+
+    if (chaptersWithOutline.isEmpty) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('暂无章节')));
+      return;
+    }
+
+    _ChapterWithOutline? selectedChapter;
+    final outlineCtrl = TextEditingController();
+
+    final result = await showDialog<_ExpandOutlineData>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('细纲扩写'),
+          content: SizedBox(
+            width: 500,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('选择要扩写的章节细纲：', style: TextStyle(fontSize: 12)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<_ChapterWithOutline>(
+                  value: selectedChapter,
+                  decoration: const InputDecoration(
+                    labelText: '章节',
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  items: chaptersWithOutline.map((cwo) => DropdownMenuItem(
+                    value: cwo,
+                    child: Text('${cwo.volumeTitle} - ${cwo.chapter.title}', style: const TextStyle(fontSize: 12)),
+                  )).toList(),
+                  onChanged: (v) {
+                    if (v != null) {
+                      setDialogState(() {
+                        selectedChapter = v;
+                        outlineCtrl.text = v.outlineText;
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: outlineCtrl,
+                  decoration: const InputDecoration(
+                    labelText: '细纲内容（可编辑）',
+                    hintText: '选中章节后自动带入大纲，可在此修改',
+                    isDense: true,
+                    alignLabelWithHint: true,
+                  ),
+                  maxLines: 8,
+                ),
+                const SizedBox(height: 8),
+                const Text('将基于选中章节的上下文（前文摘要、角色设定）进行扩写', style: TextStyle(fontSize: 11, color: Colors.grey)),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+            FilledButton(
+              onPressed: () {
+                if (selectedChapter == null || outlineCtrl.text.trim().isEmpty) return;
+                Navigator.pop(ctx, _ExpandOutlineData(
+                  chapter: selectedChapter!.chapter,
+                  outlineText: outlineCtrl.text.trim(),
+                ));
+              },
+              child: const Text('开始扩写'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result != null && mounted) {
+      final contextStr = await _buildContextForChapter(result.chapter.id, result.outlineText);
+      await _sendMessage([
+        '请根据以下细纲扩写成一篇完整的网文章节（约3000-4000字）。',
+        '直接输出正文，不要加额外说明。',
+        '',
+        '细纲：',
+        result.outlineText,
+        contextStr,
+      ].join('\n\n'));
+    }
+  }
+
+  // ===== 起名面板（简化版，直接用对话框）=====
+  Future<void> _showNamingPanel() async {
+    if (!mounted) return;
+
+    String surname = _namingSurname;
+    String gender = _namingGender;
+    String style = _namingStyle;
+    int count = _namingCount;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('起名工具'),
+        content: SizedBox(
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: TextEditingController(text: _namingSurname),
+                decoration: const InputDecoration(labelText: '姓氏（可选）', hintText: '如：叶、欧阳', isDense: true),
+                onChanged: (v) => surname = v,
+              ),
+              DropdownButtonFormField<String>(
+                value: gender,
+                decoration: const InputDecoration(labelText: '性别', isDense: true),
+                items: [('male', '男性'), ('female', '女性'), ('neutral', '中性/不限')].map((g) => DropdownMenuItem(value: g.$1, child: Text(g.$2))).toList(),
+                onChanged: (v) => gender = v!,
+              ),
+              DropdownButtonFormField<String>(
+                value: style,
+                decoration: const InputDecoration(labelText: '风格', isDense: true),
+                items: [('xuanhuan', '玄幻'), ('xianxia', '仙侠'), ('wuxia', '武侠'), ('urban', '都市'), ('historical', '历史/架空'), ('scifi', '科幻')].map((s) => DropdownMenuItem(value: s.$1, child: Text(s.$2))).toList(),
+                onChanged: (v) => style = v!,
+              ),
+              TextField(
+                decoration: const InputDecoration(labelText: '生成数量', isDense: true),
+                keyboardType: TextInputType.number,
+                controller: TextEditingController(text: _namingCount.toString()),
+                onChanged: (v) => count = int.tryParse(v) ?? 15,
+              ),
+            ]),
+          ),
+          actions: [
+            FilledButton.icon(
+              icon: const Icon(Icons.auto_awesome),
+              label: const Text('生成名字'),
+              onPressed: () async {
+                final config = await ref.read(aiConfigProvider.future);
+                if (config.apiKey == null || config.apiKey!.isEmpty) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请先配置 API Key')));
+                  return;
+                }
+
+                final genderText = switch (gender) { 'male' => '男性', 'female' => '女性', _ => '中性/不限' };
+                final styleText = switch (style) { 'xuanhuan' => '玄幻', 'xianxia' => '仙侠', 'wuxia' => '武侠', 'urban' => '都市', 'historical' => '历史/架空', 'scifi' => '科幻', _ => '古风' };
+                final surnameText = surname.isNotEmpty ? '姓氏：$surname' : '姓氏：随机';
+                final prompt = AiPrompts.naming('网文$styleText${switch (gender) { 'male' => '男性', 'female' => '女性', _ => '中性/不限' }}角色', style: '$surnameText，${styleText}风格，${switch (gender) { 'male' => '男性', 'female' => '女性', _ => '中性/不限' }}，每个名字2-4字，朗朗上口，有网文特色', count: count);
+
+                setState(() => _isLoading = true);
+                try {
+                  final client = AiClient();
+                  final response = await client.chat(provider: config.provider, apiKey: config.apiKey!, messages: [const AiMessage(role: 'system', content: AiPrompts.systemWriter), AiMessage(role: 'user', content: prompt)]);
+                  final names = response.content.split('\n').map((e) => e.trim()).where((e) => e.isNotEmpty && !e.startsWith('【') && !e.contains('生成') && !e.contains('名字')).take(count).toList();
+                  if (mounted) { setState(() { _namingResults = names; _isLoading = false; }); }
+                } catch (e) {
+                  if (mounted) { setState(() => _isLoading = false); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('生成失败: $e'))); }
+                }
+              },
+),
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('关闭')),
+      ],
+    ),
+  );
+}
+
+  Future<void> _handleWriterBlock() async {
+    final bookId = ref.read(selectedBookProvider);
+    final chapterId = ref.read(selectedChapterProvider);
+
+    String storyContext = '';
+    String recentContent = '';
+
+    if (bookId != null) {
+      final outlineDao = ref.read(outlineDaoProvider);
+      final characterDao = ref.read(characterDaoProvider);
+
+      final bookOutlineNodes = await outlineDao.getOutlineByBook(bookId);
+      if (bookOutlineNodes.isNotEmpty) {
+        final outlineText = bookOutlineNodes
+            .where((n) => n.content != null && n.content!.isNotEmpty)
+            .map((n) => '${n.title}：${n.content}')
+            .join('\n\n');
+        storyContext += '【书籍大纲】\n$outlineText\n\n';
+      }
+
+      final characters = await characterDao.getCharactersByBook(bookId);
+      if (characters.isNotEmpty) {
+        final charText = characters
+            .map((c) => '- ${c.name}（${c.roleType}）${c.personality != null && c.personality!.isNotEmpty ? " 性格：${c.personality}" : ""}')
+            .join('\n');
+        storyContext += '【角色设定】\n$charText\n\n';
+      }
+    }
+
+    if (chapterId != null) {
+      final chapterDao = ref.read(chapterDaoProvider);
+      final chapter = await chapterDao.getChapterById(chapterId);
+      if (chapter != null) {
+        final outlineDao = ref.read(outlineDaoProvider);
+        final chapterOutlines = await outlineDao.getOutlineNodesByChapter(chapterId);
+        if (chapterOutlines.isNotEmpty) {
+          final outlineText = chapterOutlines
+              .where((n) => n.content != null && n.content!.isNotEmpty)
+              .map((n) => '${n.title}：${n.content}')
+              .join('\n\n');
+          storyContext += '【当前章大纲】\n$outlineText\n\n';
+        }
+
+        final volumeDao = ref.read(volumeDaoProvider);
+        final volumes = await volumeDao.getVolumesByBook(bookId!);
+        final allChapters = <Chapter>[];
+        for (final vol in volumes) {
+          allChapters.addAll(await chapterDao.getChaptersByVolume(vol.id));
+        }
+        allChapters.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+        final currentIndex = allChapters.indexWhere((c) => c.id == chapterId);
+        if (currentIndex > 0) {
+          final recent = allChapters
+              .sublist(max(0, currentIndex - 3), currentIndex)
+              .map((c) => '【${c.title}】\n${c.content.length > 1500 ? c.content.substring(0, 1500) : c.content}')
+              .join('\n\n---\n\n');
+          recentContent = recent;
+        }
+      }
+    }
+
+    if (storyContext.isEmpty && recentContent.isEmpty) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请先创建书籍和章节，或至少选择当前章节')));
+      return;
+    }
+
+    final prompt = AiPrompts.writerBlock(recentContent, storyContext);
+    await _sendMessage(prompt);
+  }
+
+  Future<String> _buildContextForChapter(String chapterId, String outlineText) async {
+    final buffer = StringBuffer();
+    final bookId = ref.read(selectedBookProvider);
+
+    if (bookId != null) {
+      final chapterDao = ref.read(chapterDaoProvider);
+      final volumeDao = ref.read(volumeDaoProvider);
+      final volumes = await volumeDao.getVolumesByBook(bookId);
+      final allChapters = <Chapter>[];
+      for (final vol in volumes) {
+        allChapters.addAll(await chapterDao.getChaptersByVolume(vol.id));
+      }
+      allChapters.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+      final currentIndex = allChapters.indexWhere((c) => c.id == chapterId);
+      if (currentIndex > 0) {
+        final prevChapter = allChapters[currentIndex - 1];
+        if (prevChapter.content.isNotEmpty) {
+          buffer.writeln('【前一章摘要】');
+          buffer.writeln(prevChapter.content.length > 2000 ? prevChapter.content.substring(0, 2000) : prevChapter.content);
+          buffer.writeln();
+        }
+      }
+
+      final characterDao = ref.read(characterDaoProvider);
+      final characters = await characterDao.getCharactersByBook(bookId);
+      if (characters.isNotEmpty) {
+        buffer.writeln('【主要角色】');
+        for (final c in characters.take(10)) {
+          buffer.writeln('- ${c.name}（${c.roleType}）${c.personality != null && c.personality!.isNotEmpty ? " 性格：${c.personality}" : ""}');
+        }
+        buffer.writeln();
+      }
+    }
+
+    return buffer.toString();
   }
 
   Future<void> _handleBookPlanning() async {
