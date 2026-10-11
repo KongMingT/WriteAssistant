@@ -68,7 +68,7 @@ class _NamingParams {
   });
 }
 
-class _AiPanelState extends ConsumerState<AiPanel> {
+class _AiPanelState extends ConsumerState<AiPanel> with SingleTickerProviderStateMixin {
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
@@ -85,10 +85,25 @@ class _AiPanelState extends ConsumerState<AiPanel> {
   int _namingCount = 15;
   List<String> _namingResults = [];
 
+  // U1: Tabbed panel architecture
+  late TabController _tabController;
+  static const _tabLabels = ['细纲扩写', '起名工具', '卡文助手', 'AI对话'];
+  double _aiPanelWidth = 360;
+  bool _aiPanelCollapsed = false;
+
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: _tabLabels.length, vsync: this);
     _loadNamingPrefs();
+  }
+
+  @override
+  void dispose() {
+    _inputController.dispose();
+    _scrollController.dispose();
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadNamingPrefs() async {
@@ -109,13 +124,6 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     await prefs.setString('naming_gender', _namingGender);
     await prefs.setString('naming_style', _namingStyle);
     await prefs.setInt('naming_count', _namingCount);
-  }
-
-  @override
-  void dispose() {
-    _inputController.dispose();
-    _scrollController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadChapterSelector() async {
@@ -1114,27 +1122,75 @@ class _AiPanelState extends ConsumerState<AiPanel> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final fontFamily = ref.watch(editorFontFamilyProvider);
+
+    // Build the tabbed content based on current tab
+    Widget tabContent;
+    switch (_tabController.index) {
+      case 0:
+        tabContent = _buildExpandOutlineTab(theme, fontFamily);
+        break;
+      case 1:
+        tabContent = _buildNamingTab(theme, fontFamily);
+        break;
+      case 2:
+        tabContent = _buildWriterBlockTab(theme, fontFamily);
+        break;
+      case 3:
+      default:
+        tabContent = _buildChatTab(theme, fontFamily);
+        break;
+    }
+
     return Container(
       color: theme.colorScheme.surfaceContainerLow,
       child: Column(
         children: [
-          _buildHeader(theme),
+          _buildHeader(theme, fontFamily),
           const Divider(height: 1),
-          _buildQuickActions(theme, fontFamily),
-          if (_showChapterSelector) ...[
-            const Divider(height: 1),
-            _buildChapterSelector(theme, fontFamily),
-          ],
+          // Tab bar
+          Container(
+            color: theme.colorScheme.surfaceContainerLow,
+            child: TabBar(
+              controller: _tabController,
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              labelPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              indicatorColor: theme.colorScheme.primary,
+              labelColor: theme.colorScheme.primary,
+              unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+              labelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, fontFamily: fontFamily),
+              unselectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, fontFamily: fontFamily),
+              tabs: _tabLabels.map((label) => Tab(text: label)).toList(),
+              onTap: (index) {
+                _tabController.animateTo(index);
+                setState(() {}); // Trigger rebuild for tab-specific content
+              },
+),
+          ),
           const Divider(height: 1),
-          Expanded(child: _buildMessageList(theme, fontFamily)),
-          const Divider(height: 1),
-          _buildInputArea(theme, fontFamily),
+          // Tab content with collapsible/Resizable panel
+          Expanded(
+            child: _aiPanelCollapsed
+                ? const SizedBox.shrink()
+                : _buildResizableTabPanel(
+                    width: _aiPanelWidth,
+                    minWidth: 280,
+                    maxWidth: 520,
+                    onResize: (w) => setState(() => _aiPanelWidth = w),
+                    child: tabContent,
+                  ),
+          ),
+          _buildCollapseHandle(
+            collapsed: _aiPanelCollapsed,
+            onToggle: () => setState(() => _aiPanelCollapsed = !_aiPanelCollapsed),
+            isLeft: false,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildHeader(ThemeData theme) {
+  Widget _buildHeader(ThemeData theme, String fontFamily) {
     final selectedCount = ref.watch(selectedContextChaptersProvider).length;
     return Padding(
       padding: const EdgeInsets.all(12),
@@ -1441,6 +1497,121 @@ class _AiPanelState extends ConsumerState<AiPanel> {
           tooltip: '发送',
         ),
       ]),
+    );
+  }
+
+  // ===== U1: Tabbed Panel Helpers =====
+
+  Widget _buildResizableTabPanel({
+    required double width,
+    required double minWidth,
+    required double maxWidth,
+    required ValueChanged<double> onResize,
+    required Widget child,
+  }) {
+    return SizedBox(
+      width: width,
+      child: Row(
+        children: [
+          Expanded(child: child),
+          MouseRegion(
+            cursor: SystemMouseCursors.resizeColumn,
+            child: GestureDetector(
+              onHorizontalDragUpdate: (details) {
+                final newWidth = (width + details.delta.dx).clamp(minWidth, maxWidth);
+                onResize(newWidth);
+              },
+              child: Container(
+                width: 4,
+                color: Colors.transparent,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCollapseHandle({
+    required bool collapsed,
+    required VoidCallback onToggle,
+    required bool isLeft,
+  }) {
+    return GestureDetector(
+      onTap: onToggle,
+      child: Container(
+        width: 20,
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        child: Center(
+          child: Icon(
+            collapsed ? (isLeft ? Icons.chevron_right : Icons.chevron_left) : (isLeft ? Icons.chevron_left : Icons.chevron_right),
+            size: 16, color: Colors.grey,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ===== Tab Content Placeholders (U2-U4) =====
+
+  Widget _buildExpandOutlineTab(ThemeData theme, String fontFamily) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.auto_stories_outlined, size: 48, color: theme.colorScheme.onSurfaceVariant.withAlpha(60)),
+          const SizedBox(height: 16),
+          Text('细纲扩写', style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 16, fontFamily: fontFamily)),
+          const SizedBox(height: 8),
+          Text('U2 实现中：左侧章节树 + 右侧全高编辑器 + 模版库', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant.withAlpha(120), fontFamily: fontFamily)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNamingTab(ThemeData theme, String fontFamily) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.abc_outlined, size: 48, color: theme.colorScheme.onSurfaceVariant.withAlpha(60)),
+          const SizedBox(height: 16),
+          Text('起名工具', style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 16, fontFamily: fontFamily)),
+          const SizedBox(height: 8),
+          Text('U3 实现中：8大分类标签页 + 收藏夹 + 批量操作', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant.withAlpha(120), fontFamily: fontFamily)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWriterBlockTab(ThemeData theme, String fontFamily) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.lightbulb_outline, size: 48, color: theme.colorScheme.onSurfaceVariant.withAlpha(60)),
+          const SizedBox(height: 16),
+          Text('卡文助手', style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 16, fontFamily: fontFamily)),
+          const SizedBox(height: 8),
+          Text('U4 实现中：多路卡片流 + 迭代生成 + 上下文侧边栏', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant.withAlpha(120), fontFamily: fontFamily)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChatTab(ThemeData theme, String fontFamily) {
+    // This is the existing chat functionality moved to a tab
+    return Column(
+      children: [
+        if (_showChapterSelector) ...[
+          const Divider(height: 1),
+          _buildChapterSelector(theme, fontFamily),
+        ],
+        const Divider(height: 1),
+        Expanded(child: _buildMessageList(theme, fontFamily)),
+        const Divider(height: 1),
+        _buildInputArea(theme, fontFamily),
+      ],
     );
   }
 }
